@@ -77,15 +77,27 @@ int main(void)
     // TODO[p1-task2] use jmptab to get info from screen and redisplay
         //jmptab is covered by bios func
         //!! note that when getchar haven't get a input, it will return EOF(-1)
+    // int screen_ch;
+    // while(1){
+    //     while((screen_ch = bios_getchar())==-1);    //loop until getting a char
+    //     bios_putchar(screen_ch);
+    // }
+    
+    // TODO: Load tasks by either task id [p1-task3] or task name [p1-task4],
+    //   and then execute them.
+        //task3: load task by id
+    int taskid=0;
+    bios_putstr("Please input task id (end with a non-num char):\n\r");
     int screen_ch;
     while(1){
         while((screen_ch = bios_getchar())==-1);    //loop until getting a char
         bios_putchar(screen_ch);
+        if(screen_ch < '0' || screen_ch > '9')
+            break;
+        else
+            taskid = taskid*10 + screen_ch - '0';
     }
-    
-    // TODO: Load tasks by either task id [p1-task3] or task name [p1-task4],
-    //   and then execute them.
-
+    load_task_img(taskid);
 
     // Infinite while loop, where CPU stays in a low-power state (QAQQQQQQQQQQQ)
     while (1)

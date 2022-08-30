@@ -17,6 +17,7 @@
 #define BOOT_LOADER_SIG_2 0xaa
 
 #define NBYTES2SEC(nbytes) (((nbytes) / SECTOR_SIZE) + ((nbytes) % SECTOR_SIZE != 0))
+//宏定义 通过字节数 计算有空格扇区数
 
 /* TODO: [p1-task4] design your own task_info_t */
 typedef struct {
@@ -73,6 +74,7 @@ int main(int argc, char **argv)
         /* at least 3 args (createimage bootblock main) */
         error("usage: %s %s\n", progname, ARGS);
     }
+    //以上内容检测输入格式规范，除本程序外文件均需在子函数使用
     create_image(argc - 1, argv + 1);
     return 0;
 }
@@ -80,6 +82,7 @@ int main(int argc, char **argv)
 /* TODO: [p1-task4] assign your task_info_t somewhere in 'create_image' */
 static void create_image(int nfiles, char *files[])
 {
+    //两个以上程序 bootblock main及用户程序
     int tasknum = nfiles - 2;
     int nbytes_kernel = 0;
     int phyaddr = 0;
@@ -94,7 +97,7 @@ static void create_image(int nfiles, char *files[])
     /* for each input file */
     for (int fidx = 0; fidx < nfiles; ++fidx) {
 
-        int taskidx = fidx - 2;
+        int taskidx = fidx - 2; //从第三个(fidx=2)开始才是测试任务
 
         /* open input file */
         fp = fopen(*files, "r");
@@ -102,21 +105,24 @@ static void create_image(int nfiles, char *files[])
 
         /* read ELF header */
         read_ehdr(&ehdr, fp);
-        printf("0x%04lx: %s\n", ehdr.e_entry, *files);
+        printf("0x%04lx: %s\n", ehdr.e_entry, *files); //入口及程序名
 
         /* for each program header */
         for (int ph = 0; ph < ehdr.e_phnum; ph++) {
 
             /* read program header */
             read_phdr(&phdr, fp, ph, ehdr);
+            //根据文件头获取程序数目，依次读取程序头
 
             /* write segment to the image */
             write_segment(phdr, fp, img, &phyaddr);
+            //phyaddr 写到img的地址 从0开始
 
             /* update nbytes_kernel */
             if (strcmp(*files, "main") == 0) {
                 nbytes_kernel += get_filesz(phdr);
             }
+            //统计kernel(main)的实际大小，进而获得扇区数。用户程序数直接通过edr获得
         }
 
         /* write padding bytes */
@@ -127,9 +133,13 @@ static void create_image(int nfiles, char *files[])
          * 2. [p1-task4] only padding bootblock is allowed!
          */
         if (strcmp(*files, "bootblock") == 0) {
-            write_padding(img, &phyaddr, SECTOR_SIZE);
+            write_padding(img, &phyaddr, SECTOR_SIZE); 
+        }//对bootblock 补全至1个扇区，注意该函数phyaddr补全至后者而非整数倍
+        //对kernel以及用户程序，task3中设置15个扇区。此处需将phyaddr置为下一个程序写至image的地址
+        else{
+            write_padding(img, &phyaddr, SECTOR_SIZE + fidx*15*SECTOR_SIZE);
         }
-
+            
         fclose(fp);
         files++;
     }
@@ -155,6 +165,7 @@ static void read_phdr(Elf64_Phdr * phdr, FILE * fp, int ph,
     int ret;
 
     fseek(fp, ehdr.e_phoff + ph * ehdr.e_phentsize, SEEK_SET);
+    //从file头开始偏移一定位置，获取程序头
     ret = fread(phdr, sizeof(*phdr), 1, fp);
     assert(ret == 1);
     if (options.extended == 1) {
@@ -194,6 +205,7 @@ static void write_segment(Elf64_Phdr phdr, FILE *fp, FILE *img, int *phyaddr)
             fputc(fgetc(fp), img);
             (*phyaddr)++;
         }
+        //从程序位置逐字节写到image
     }
 }
 
@@ -214,6 +226,10 @@ static void write_img_info(int nbytes_kern, task_info_t *taskinfo,
 {
     // TODO: [p1-task3] & [p1-task4] write image info to some certain places
     // NOTE: os size, infomation about app-info sector(s) ...
+        //task3: only kernel is need, and pad it
+    short sec = (nbytes_kern/SECTOR_SIZE) + ((nbytes_kern%SECTOR_SIZE)!=0);
+    fseek(img,OS_SIZE_LOC,SEEK_SET);
+    fwrite(&sec,2,1,img);
 }
 
 /* print an error message and exit */
