@@ -53,6 +53,7 @@ int main(void)
     // Init task information (〃'▽'〃)
     init_task_info();
 
+
     // Output 'Hello OS!', bss check result and OS version
     char output_str[] = "bss check: _ version: _\n\r";
     char output_val[2] = {0};
@@ -60,6 +61,7 @@ int main(void)
 
     output_val[0] = check ? 't' : 'f';
     output_val[1] = version + '0';
+    
     for (i = 0; i < sizeof(output_str); ++i)
     {
         buf[i] = output_str[i];
@@ -72,6 +74,15 @@ int main(void)
     bios_putstr("Hello OS!\n\r");
     bios_putstr(buf);
 
+    // TODO[p1-task2] use jmptab to get info from screen and redisplay
+        //jmptab is covered by bios func
+        //!! note that when getchar haven't get a input, it will return EOF(-1)
+    int screen_ch;
+    while(1){
+        while((screen_ch = bios_getchar())==-1);    //loop until getting a char
+        bios_putchar(screen_ch);
+    }
+    
     // TODO: Load tasks by either task id [p1-task3] or task name [p1-task4],
     //   and then execute them.
 
