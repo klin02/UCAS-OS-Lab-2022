@@ -23,9 +23,8 @@
 typedef struct {
     short entry;
     short size;
-    short id;
     char  name[10];
-} task_info_t; //16 byte
+} task_info_t; //15 byte
 
 #define TASK_MAXNUM 16
 static task_info_t taskinfo[TASK_MAXNUM];
@@ -111,7 +110,7 @@ static void create_image(int nfiles, char *files[])
         if(taskidx>=0){
             taskinfo[taskidx].entry = cntaddr;
             taskinfo[taskidx].size = 0; //initial
-            taskinfo[taskidx].id = taskidx;
+            //taskinfo[taskidx].id = taskidx;
             strcpy(taskinfo[taskidx].name,*nfl);
         }
 

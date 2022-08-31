@@ -71,12 +71,12 @@ int main(void)
     // Output 'Hello OS!', bss check result and OS version
     char output_str[] = "bss check: _ version: _\n\r";
     char output_val[2] = {0};
-    int i, output_val_pos = 0;
+    int output_val_pos = 0;
 
     output_val[0] = check ? 't' : 'f';
     output_val[1] = version + '0';
     
-    for (i = 0; i < sizeof(output_str); ++i)
+    for (int i = 0; i < sizeof(output_str); ++i)
     {
         buf[i] = output_str[i];
         if (buf[i] == '_')
@@ -100,16 +100,33 @@ int main(void)
     // TODO: Load tasks by either task id [p1-task3] or task name [p1-task4],
     //   and then execute them.
         //task3: load task by id
-    int taskid=0;
-    bios_putstr("Please input task id (end with a non-num char):\n\r");
-    int screen_ch;
+    //int taskid=0;
+    int taskid = -1; //非法初值，用于判断名字是否合法
+    char taskstr[10]={0};
+    int strptr=0;
+    bios_putstr("Please input task name (end with a non-num and non-letter char):\n\r");
+    int ch;
     while(1){
-        while((screen_ch = bios_getchar())==-1);    //loop until getting a char
-        bios_putchar(screen_ch);
-        if(screen_ch < '0' || screen_ch > '9')
-            break;
-        else
-            taskid = taskid*10 + screen_ch - '0';
+        taskid=-1;
+        bzero(taskstr,10);
+        strptr=0;
+        while(1){
+            while((ch = bios_getchar())==-1);    //loop until getting a char
+            bios_putchar(ch);
+            //only num and letter is allowed
+            if((ch>='0'&&ch<='9')||(ch>='a'&&ch<='z')||(ch>='A'&&ch<='Z'))
+                taskstr[strptr++]=ch;
+            else
+                break;
+        }
+        for(int i=0;i<tasknum;i++){
+            if(strcmp(tasks[i].name,taskstr)==0){
+                taskid = i;
+            }
+        }
+        if(taskid == -1)
+            bios_putstr("Illegal task name, please input again:\n\r");
+        else break;
     }
     load_task_img(taskid);
 
