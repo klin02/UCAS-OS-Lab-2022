@@ -17,12 +17,15 @@
 #define BOOT_LOADER_SIG_2 0xaa
 
 #define NBYTES2SEC(nbytes) (((nbytes) / SECTOR_SIZE) + ((nbytes) % SECTOR_SIZE != 0))
-//宏定义 通过字节数 计算有空格扇区数
+//宏定义 通过字节数计算填全扇区数，但只能用于开头对齐
 
 /* TODO: [p1-task4] design your own task_info_t */
 typedef struct {
-
-} task_info_t;
+    short entry;
+    short size;
+    short id;
+    char  name[10];
+} task_info_t; //16 byte
 
 #define TASK_MAXNUM 16
 static task_info_t taskinfo[TASK_MAXNUM];
@@ -45,6 +48,8 @@ static void write_segment(Elf64_Phdr phdr, FILE *fp, FILE *img, int *phyaddr);
 static void write_padding(FILE *img, int *phyaddr, int new_phyaddr);
 static void write_img_info(int nbytes_kernel, task_info_t *taskinfo,
                            short tasknum, FILE *img);
+
+int info_sz; //用户信息占用位置，在kernel前,该变量所有子函数可见
 
 int main(int argc, char **argv)
 {
@@ -94,10 +99,51 @@ static void create_image(int nfiles, char *files[])
     img = fopen(IMAGE_FILE, "w");
     assert(img != NULL);
 
+    //task4: 为了制作用户信息扇区，提前遍历获取信息，但是此时不必遍历bootblock
+    info_sz = 5*sizeof(short) + tasknum*sizeof(task_info_t); //用户信息占用位置，在kernel前
+    int cntaddr = SECTOR_SIZE + info_sz; //从第二个扇区kernel位置开始统计位置情况
+    //task3的使用中只使用一次入参，此处需要使用备份fp
+    char **nfl = files;
+    nfl ++; //!! 注意指针要跳过bl
+    for (int fidx = 1; fidx < nfiles; ++fidx){
+        int taskidx = fidx - 2; //从第三个(fidx=2)开始才是测试任务
+        //record task info 
+        if(taskidx>=0){
+            taskinfo[taskidx].entry = cntaddr;
+            taskinfo[taskidx].size = 0; //initial
+            taskinfo[taskidx].id = taskidx;
+            strcpy(taskinfo[taskidx].name,*nfl);
+        }
+
+        /* open input file */
+        fp = fopen(*nfl, "r");
+        assert(fp != NULL);
+
+        /* read ELF header */
+        read_ehdr(&ehdr, fp);
+
+        /* for each program header */
+        for (int ph = 0; ph < ehdr.e_phnum; ph++) {
+
+            /* read program header */
+            read_phdr(&phdr, fp, ph, ehdr);
+            //根据文件头获取程序数目，依次读取程序头
+
+            /* update nbytes_kernel */
+            if (strcmp(*nfl, "main") == 0) {
+                nbytes_kernel += get_filesz(phdr);
+            }
+            else if(taskidx>=0)
+                taskinfo[taskidx].size += get_filesz(phdr);
+            //统计kernel(main)的实际大小，进而获得扇区数。用户程序数直接通过edr获得
+            cntaddr += get_filesz(phdr);
+        }
+        fclose(fp);
+        nfl ++;
+    }
+
     /* for each input file */
     for (int fidx = 0; fidx < nfiles; ++fidx) {
-
-        int taskidx = fidx - 2; //从第三个(fidx=2)开始才是测试任务
 
         /* open input file */
         fp = fopen(*files, "r");
@@ -117,12 +163,6 @@ static void create_image(int nfiles, char *files[])
             /* write segment to the image */
             write_segment(phdr, fp, img, &phyaddr);
             //phyaddr 写到img的地址 从0开始
-
-            /* update nbytes_kernel */
-            if (strcmp(*files, "main") == 0) {
-                nbytes_kernel += get_filesz(phdr);
-            }
-            //统计kernel(main)的实际大小，进而获得扇区数。用户程序数直接通过edr获得
         }
 
         /* write padding bytes */
@@ -133,17 +173,23 @@ static void create_image(int nfiles, char *files[])
          * 2. [p1-task4] only padding bootblock is allowed!
          */
         if (strcmp(*files, "bootblock") == 0) {
+            //对bootblock 补全至1个扇区，注意该函数phyaddr补全至后者而非整数倍
             write_padding(img, &phyaddr, SECTOR_SIZE); 
-        }//对bootblock 补全至1个扇区，注意该函数phyaddr补全至后者而非整数倍
-        //对kernel以及用户程序，task3中设置15个扇区。此处需将phyaddr置为下一个程序写至image的地址
-        else{
-            write_padding(img, &phyaddr, SECTOR_SIZE + fidx*15*SECTOR_SIZE);
+            //task4: 用户信息扇区在bl后，kernel前
+            //!! 注意，需要更新phyaddr
+            write_img_info(nbytes_kernel, taskinfo, tasknum, img);
+            phyaddr = SECTOR_SIZE + info_sz;
         }
-            
+        //task3:
+            //对kernel以及用户程序，task3中设置15个扇区。此处需将phyaddr置为下一个程序写至image的地址
+        // else{
+        //     write_padding(img, &phyaddr, SECTOR_SIZE + fidx*15*SECTOR_SIZE);
+        // }
+        
         fclose(fp);
         files++;
     }
-    write_img_info(nbytes_kernel, taskinfo, tasknum, img);
+    
 
     fclose(img);
 }
@@ -227,9 +273,36 @@ static void write_img_info(int nbytes_kern, task_info_t *taskinfo,
     // TODO: [p1-task3] & [p1-task4] write image info to some certain places
     // NOTE: os size, infomation about app-info sector(s) ...
         //task3: only kernel is need, and pad it
-    short sec = (nbytes_kern/SECTOR_SIZE) + ((nbytes_kern%SECTOR_SIZE)!=0);
+    // short sec = NBYTES2SEC(nbytes_kern);
+    // fseek(img,OS_SIZE_LOC,SEEK_SET);
+    // fwrite(&sec,2,1,img);
+    
+        //task4: 需要一个扇区用于记录，镜像放在kernel前，内存放在第一个任务处。
+    //os_size用于记录该扇区的大小,位于第一个扇区尾部，写2个short之后进入该扇区
+    //以下为扇区内部信息分布
+    //kernel block id || kernel block num || kernel entry_offset || kernel tail_offset || tasknum || taskinfo1 || ...
+    //detailed taskinfo will be get in loader by entry and size
     fseek(img,OS_SIZE_LOC,SEEK_SET);
-    fwrite(&sec,2,1,img);
+    short info_sec = NBYTES2SEC(info_sz);
+    fwrite(&info_sec,2,1,img);
+    fputc(BOOT_LOADER_SIG_1,img);
+    fputc(BOOT_LOADER_SIG_2,img);
+    //以下为第二个扇区
+    short kernel_entry = SECTOR_SIZE + info_sz;
+    short kernel_block_id = kernel_entry / SECTOR_SIZE;
+    short kernel_tail_id = (kernel_entry + nbytes_kern) / SECTOR_SIZE;
+    short kernel_block_num = kernel_tail_id - kernel_block_id +1;
+    //offset from kernel addr in memory
+    short kernel_entry_offset = kernel_entry - kernel_block_id*SECTOR_SIZE;
+    short kernel_tail_offset = kernel_entry_offset + nbytes_kern;
+
+    fwrite(&kernel_block_id,2,1,img);
+    fwrite(&kernel_block_num,2,1,img);
+    fwrite(&kernel_entry_offset,2,1,img);
+    fwrite(&kernel_tail_offset,2,1,img);
+    fwrite(&tasknum,2,1,img);
+    for(int i=0;i<tasknum;i++) 
+        fwrite(&taskinfo[i],sizeof(task_info_t),1,img);
 }
 
 /* print an error message and exit */

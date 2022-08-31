@@ -8,11 +8,15 @@
 
 #define VERSION_BUF 50
 
+//16个任务地址为0x52000000~0x520fffff
+#define USER_INFO_ADDR 0x52200000
+//BOOTLOADER_ENTRYPOINT 0x50200000   BOOT_LOADER_SIG_OFFSET 0x1fe
 int version = 2; // version must between 0 and 9
 char buf[VERSION_BUF];
 
 // Task info array
 task_info_t tasks[TASK_MAXNUM];
+short tasknum;
 
 static int bss_check(void)
 {
@@ -40,6 +44,16 @@ static void init_task_info(void)
 {
     // TODO: [p1-task4] Init 'tasks' array via reading app-info sector
     // NOTE: You need to get some related arguments from bootblock first
+    // 根据用户信息扇区获取（已加载到内存），只需加载选定程序即可，在load中实现
+    unsigned char * ptr = (unsigned int *)USER_INFO_ADDR;
+    ptr += 8;
+    //tasknum is define in task.h
+    memcpy(&tasknum,ptr,2);
+    ptr += 2;
+    for(int i=0;i<tasknum;i++){
+        memcpy(&tasks[i],ptr,sizeof(task_info_t));
+        ptr += sizeof(task_info_t);
+    }
 }
 
 int main(void)
