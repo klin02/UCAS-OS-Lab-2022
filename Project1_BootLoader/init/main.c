@@ -56,6 +56,32 @@ static void init_task_info(void)
     }
 }
 
+//task5: init task order
+char batbuf[512]={0};
+int bat_array[100];
+int bat_ptr=0;
+short bat_sz;
+static void init_bat(void)
+{
+    unsigned char *ptr = (unsigned int *)(USER_INFO_ADDR);
+    ptr += 5*sizeof(short);
+    ptr += tasknum*sizeof(task_info_t);
+    memcpy(&bat_sz,ptr,2);
+    ptr+=2;
+    memcpy(batbuf,ptr,bat_sz);
+    int tmp=0;
+    char tmpch;
+    for(int i=0;i<bat_sz;i++){
+        tmpch = batbuf[i];
+        if(tmpch >= '0'&& tmpch<='9')
+            tmp = tmp*10 + tmpch - '0';
+        else{//此处判断条件因为buf最后一个不是数字
+            bat_array[bat_ptr++]=tmp;
+            tmp=0;
+        }
+    }
+}
+
 int main(void)
 {
     // Check whether .bss section is set to zero
@@ -67,6 +93,8 @@ int main(void)
     // Init task information (〃'▽'〃)
     init_task_info();
 
+    // task5: init bat
+    init_bat();
 
     // Output 'Hello OS!', bss check result and OS version
     char output_str[] = "bss check: _ version: _\n\r";
@@ -101,35 +129,47 @@ int main(void)
     //   and then execute them.
         //task3: load task by id
     //int taskid=0;
-    int taskid = -1; //非法初值，用于判断名字是否合法
-    char taskstr[10]={0};
-    int strptr=0;
-    bios_putstr("Please input task name (end with a non-num and non-letter char):\n\r");
-    int ch;
-    while(1){
-        taskid=-1;
-        bzero(taskstr,10);
-        strptr=0;
-        while(1){
-            while((ch = bios_getchar())==-1);    //loop until getting a char
-            bios_putchar(ch);
-            //only num and letter is allowed
-            if((ch>='0'&&ch<='9')||(ch>='a'&&ch<='z')||(ch>='A'&&ch<='Z'))
-                taskstr[strptr++]=ch;
-            else
-                break;
-        }
-        for(int i=0;i<tasknum;i++){
-            if(strcmp(tasks[i].name,taskstr)==0){
-                taskid = i;
-            }
-        }
-        if(taskid == -1)
-            bios_putstr("Illegal task name, please input again:\n\r");
-        else break;
-    }
-    load_task_img(taskid);
 
+        //task4: load task by name 
+    // int taskid = -1; //非法初值，用于判断名字是否合法
+    // char taskstr[10]={0};
+    // int strptr=0;
+    // bios_putstr("Please input task name (end with a non-num and non-letter char):\n\r");
+    // int ch;
+    // while(1){
+    //     taskid=-1;
+    //     bzero(taskstr,10);
+    //     strptr=0;
+    //     while(1){
+    //         while((ch = bios_getchar())==-1);    //loop until getting a char
+    //         bios_putchar(ch);
+    //         //only num and letter is allowed
+    //         if((ch>='0'&&ch<='9')||(ch>='a'&&ch<='z')||(ch>='A'&&ch<='Z'))
+    //             taskstr[strptr++]=ch;
+    //         else
+    //             break;
+    //     }
+    //     for(int i=0;i<tasknum;i++){
+    //         if(strcmp(tasks[i].name,taskstr)==0){
+    //             taskid = i;
+    //         }
+    //     }
+    //     if(taskid == -1)
+    //         bios_putstr("Illegal task name, please input again:\n\r");
+    //     else break;
+    // }
+    // load_task_img(taskid);
+
+        //task5: load task by bat_array
+    bios_putstr("task5: call func by bat:\n\r");
+    // bios_putstr(batbuf);
+    bios_putstr("\t bat info:");
+    for(int i=0;i<bat_sz-1;i++)
+        bios_putchar(batbuf[i]);
+    bios_putstr("\n\r");
+    for(int i=0;i<bat_ptr;i++){
+        load_task_img(bat_array[i]);
+    }
     // Infinite while loop, where CPU stays in a low-power state (QAQQQQQQQQQQQ)
     while (1)
     {

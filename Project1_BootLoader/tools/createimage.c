@@ -40,6 +40,7 @@ static void create_image(int nfiles, char *files[]);
 static void error(char *fmt, ...);
 static void read_ehdr(Elf64_Ehdr *ehdr, FILE *fp);
 static void read_phdr(Elf64_Phdr *phdr, FILE *fp, int ph, Elf64_Ehdr ehdr);
+static void my_read_phdr(Elf64_Phdr *phdr, FILE *fp, int ph, Elf64_Ehdr ehdr);
 static uint64_t get_entrypoint(Elf64_Ehdr ehdr);
 static uint32_t get_filesz(Elf64_Phdr phdr);
 static uint32_t get_memsz(Elf64_Phdr phdr);
@@ -49,6 +50,7 @@ static void write_img_info(int nbytes_kernel, task_info_t *taskinfo,
                            short tasknum, FILE *img);
 
 int info_sz; //用户信息占用位置，在kernel前,该变量所有子函数可见
+int bat_sz;
 
 int main(int argc, char **argv)
 {
@@ -87,7 +89,10 @@ int main(int argc, char **argv)
 static void create_image(int nfiles, char *files[])
 {
     //两个以上程序 bootblock main及用户程序
-    int tasknum = nfiles - 2;
+    //task1-4:
+    //int tasknum = nfiles - 2;
+    //task5: include bat.txt
+    int tasknum = nfiles-3;
     int nbytes_kernel = 0;
     int phyaddr = 0;
     FILE *fp = NULL, *img = NULL;
@@ -99,13 +104,30 @@ static void create_image(int nfiles, char *files[])
     assert(img != NULL);
 
     //task4: 为了制作用户信息扇区，提前遍历获取信息，但是此时不必遍历bootblock
-    info_sz = 5*sizeof(short) + tasknum*sizeof(task_info_t); //用户信息占用位置，在kernel前
-    int cntaddr = SECTOR_SIZE + info_sz; //从第二个扇区kernel位置开始统计位置情况
+    //info_sz = 5*sizeof(short) + tasknum*sizeof(task_info_t); //用户信息占用位置，在kernel前
+    
     //task3的使用中只使用一次入参，此处需要使用备份fp
     char **nfl = files;
     nfl ++; //!! 注意指针要跳过bl
-    for (int fidx = 1; fidx < nfiles; ++fidx){
-        int taskidx = fidx - 2; //从第三个(fidx=2)开始才是测试任务
+    //考虑bat
+    fp = fopen(*nfl,"r");
+    assert(fp != NULL);
+    char nouse_ch;
+    bat_sz =0 ;
+    while(!feof(fp)){
+        nouse_ch = fgetc(fp);
+        //printf("%c",nouse_ch);
+        bat_sz++;
+    }
+    //printf("\nbat end\n");
+    fclose(fp);
+    nfl++;
+    //task5: 考虑到载入bat相关，info大小有所膨胀
+    info_sz = 6*sizeof(short) + tasknum*sizeof(task_info_t) + bat_sz;
+    int cntaddr = SECTOR_SIZE + info_sz; //从第二个扇区kernel位置开始统计位置情况
+    for (int fidx = 2; fidx < nfiles; ++fidx){
+        //int taskidx = fidx - 2; //task4 从第三个(fidx=2)开始是测试任务
+        int taskidx = fidx - 3; 
         //record task info 
         if(taskidx>=0){
             taskinfo[taskidx].entry = cntaddr;
@@ -125,7 +147,7 @@ static void create_image(int nfiles, char *files[])
         for (int ph = 0; ph < ehdr.e_phnum; ph++) {
 
             /* read program header */
-            read_phdr(&phdr, fp, ph, ehdr);
+            my_read_phdr(&phdr, fp, ph, ehdr);
             //根据文件头获取程序数目，依次读取程序头
 
             /* update nbytes_kernel */
@@ -141,8 +163,20 @@ static void create_image(int nfiles, char *files[])
         nfl ++;
     }
 
+    //以上都只进行了读，以下才开始写镜像
     /* for each input file */
     for (int fidx = 0; fidx < nfiles; ++fidx) {
+        //注意对于bat.txt文件，读取方式不同，因此单独考虑
+        if(fidx == 1){ // bat.txt
+            fp = fopen(*files, "r");
+            assert(fp != NULL);
+            while(!feof(fp)){
+                fputc(fgetc(fp),img);
+            }
+            fclose(fp);
+            files++;
+            continue;
+        }
 
         /* open input file */
         fp = fopen(*files, "r");
@@ -177,7 +211,7 @@ static void create_image(int nfiles, char *files[])
             //task4: 用户信息扇区在bl后，kernel前
             //!! 注意，需要更新phyaddr
             write_img_info(nbytes_kernel, taskinfo, tasknum, img);
-            phyaddr = SECTOR_SIZE + info_sz;
+            phyaddr = SECTOR_SIZE + info_sz; //注意bat的内容是在对应文件完成的，此处还未写入
         }
         //task3:
             //对kernel以及用户程序，task3中设置15个扇区。此处需将phyaddr置为下一个程序写至image的地址
@@ -189,8 +223,6 @@ static void create_image(int nfiles, char *files[])
         files++;
     }
     
-
-    fclose(img);
 }
 
 static void read_ehdr(Elf64_Ehdr * ehdr, FILE * fp)
@@ -220,6 +252,16 @@ static void read_phdr(Elf64_Phdr * phdr, FILE * fp, int ph,
         printf("\t\tfilesz 0x%04lx", phdr->p_filesz);
         printf("\t\tmemsz 0x%04lx\n", phdr->p_memsz);
     }
+}
+
+static void my_read_phdr(Elf64_Phdr * phdr, FILE * fp, int ph,
+                      Elf64_Ehdr ehdr)
+{
+    int ret;
+    fseek(fp, ehdr.e_phoff + ph * ehdr.e_phentsize, SEEK_SET);
+    //从file头开始偏移一定位置，获取程序头
+    ret = fread(phdr, sizeof(*phdr), 1, fp);
+    assert(ret == 1);
 }
 
 static uint64_t get_entrypoint(Elf64_Ehdr ehdr)
@@ -278,7 +320,7 @@ static void write_img_info(int nbytes_kern, task_info_t *taskinfo,
     
         //task4: 需要一个扇区用于记录，镜像放在kernel前，内存放在第一个任务处。
     //os_size用于记录该扇区的大小,位于第一个扇区尾部，写2个short之后进入该扇区
-    //以下为扇区内部信息分布
+    //以下为task4扇区内部信息分布
     //kernel block id || kernel block num || kernel entry_offset || kernel tail_offset || tasknum || taskinfo1 || ...
     //detailed taskinfo will be get in loader by entry and size
     fseek(img,OS_SIZE_LOC,SEEK_SET);
@@ -286,6 +328,9 @@ static void write_img_info(int nbytes_kern, task_info_t *taskinfo,
     fwrite(&info_sec,2,1,img);
     fputc(BOOT_LOADER_SIG_1,img);
     fputc(BOOT_LOADER_SIG_2,img);
+
+    //task5 扇区信息分布
+    //... || taskinfo... || bat_sz || bat_content
     //以下为第二个扇区
     short kernel_entry = SECTOR_SIZE + info_sz;
     short kernel_block_id = kernel_entry / SECTOR_SIZE;
@@ -302,6 +347,7 @@ static void write_img_info(int nbytes_kern, task_info_t *taskinfo,
     fwrite(&tasknum,2,1,img);
     for(int i=0;i<tasknum;i++) 
         fwrite(&taskinfo[i],sizeof(task_info_t),1,img);
+    fwrite(&bat_sz,2,1,img);
 }
 
 /* print an error message and exit */

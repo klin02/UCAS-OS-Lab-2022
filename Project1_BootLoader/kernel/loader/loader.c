@@ -42,5 +42,6 @@ uint64_t load_task_img(int taskid)
     //call the task
     void (*func)(void) = (void *)task_mem_addr;
     func();
+    //asm volatile ("jalr %0" : : "r"(task_mem_addr));
     return 0;
 }

@@ -161,7 +161,12 @@ elf: $(ELF_BOOT) $(ELF_MAIN) $(ELF_USER)
 $(ELF_CREATEIMAGE): $(SRC_CREATEIMAGE)
 	$(HOST_CC) $(SRC_CREATEIMAGE) -o $@ -ggdb -Wall
 
-image: $(ELF_CREATEIMAGE) $(ELF_BOOT) $(ELF_MAIN) $(ELF_USER)
-	cd $(DIR_BUILD) && ./$(<F) --extended $(filter-out $(<F), $(^F))
 
+# image: $(ELF_CREATEIMAGE) $(ELF_BOOT) $(ELF_MAIN) $(ELF_USER)
+#	cd $(DIR_BUILD) && ./$(<F) --extended $(filter-out $(<F), $(^F))
+
+# task 5: the src will include a txt, load in app-info sector
+BAT_SRC = ./build/bat.txt
+image: $(ELF_CREATEIMAGE) $(ELF_BOOT) $(BAT_SRC) $(ELF_MAIN) $(ELF_USER) 
+	cd $(DIR_BUILD) && ./$(<F) --extended $(filter-out $(<F), $(^F))
 .PHONY: image
