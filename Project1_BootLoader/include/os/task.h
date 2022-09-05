@@ -17,4 +17,5 @@ typedef struct {
 extern short tasknum; //set for main.c and loader.c
 extern task_info_t tasks[TASK_MAXNUM];
 
+
 #endif

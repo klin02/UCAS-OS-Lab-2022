@@ -9,14 +9,41 @@
 #define VERSION_BUF 50
 
 //16个任务地址为0x52000000~0x520fffff
+//用户扇区拷贝到的内存位置
 #define USER_INFO_ADDR 0x52200000
-//BOOTLOADER_ENTRYPOINT 0x50200000   BOOT_LOADER_SIG_OFFSET 0x1fe
+
+//用户栈帧相关部分
+#define STACK_NUM 16
+//存储空闲栈帧号和数据的位置
+#define STACK_TAG_BASE 0x52300000
+#define STACK_ADDR_BASE 0x52310000
+
+//用户程序运行的栈地址基址
+#define TASK_STACK_BASE 0x53000000
+//分配的栈帧大小
+#define TASK_STACK_SIZE 0x10000
 int version = 2; // version must between 0 and 9
 char buf[VERSION_BUF];
 
 // Task info array
 task_info_t tasks[TASK_MAXNUM];
 short tasknum;
+
+//additional: stack array for task switch
+char stack_tag[STACK_NUM];    //0 free 1 occupied
+long stack_addr[STACK_NUM];
+static void init_stack_array(void){
+    //assign stack frames for different running stack
+    //better design is queue, but array is easier for assembly
+    for(int i=0;i<STACK_NUM;i++){
+        stack_tag[i]=0;
+        stack_addr[i]=TASK_STACK_BASE+i*TASK_STACK_SIZE;
+    }
+    unsigned char *ptr = (unsigned int *)STACK_TAG_BASE;
+    memcpy(ptr,stack_tag,STACK_NUM * sizeof(char));
+    ptr = (unsigned int *)STACK_ADDR_BASE;
+    memcpy(ptr,stack_addr,STACK_NUM * sizeof(long));
+}
 
 static int bss_check(void)
 {
@@ -95,6 +122,9 @@ int main(void)
 
     // task5: init bat
     init_bat();
+
+    // additional: init task stack 
+    init_stack_array();
 
     // Output 'Hello OS!', bss check result and OS version
     char output_str[] = "bss check: _ version: _\n\r";

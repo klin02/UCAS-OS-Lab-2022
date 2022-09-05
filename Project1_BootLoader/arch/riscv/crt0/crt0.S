@@ -1,11 +1,18 @@
 #include <asm.h>
 
-#define USER_STACK 0x52300000
+//为了使不同任务程序同时处于运行状态，将返回地址和占用栈帧号存于其栈帧中。
+//因此获取空闲栈帧信息，再进行存储
+
+#define STACK_NUM 16
+//存储空闲栈帧号和数据的位置
+#define STACK_TAG_BASE 0x52300000
+#define STACK_ADDR_BASE 0x52310000
+
 ENTRY(_start)
 
     //store ra to return kernel later  
-    la a0, USER_STACK
-    sw ra, 0(a0)
+    # la a0, RA_TMP
+    # sw ra, 0(a0)
 
     /* TODO: [p1-task3] setup C runtime environment for the user program */
     la  a0, __bss_start
@@ -15,20 +22,61 @@ ENTRY(_start)
     addi a0, a0, 4
     blt  a0, a1, Clear_Bss
 
-    /* TODO: [p1-task3] enter main function */
-    //la  sp, USER_STACK
-    jal main
+    //additional: get free task_stack by task_tag
+    li  a0,STACK_NUM
+    la  a1,STACK_TAG_BASE
+    la  a2,STACK_ADDR_BASE
+    //获取队列中空闲的栈帧
+    move 	a3, zero
+  stack_begin:
+    bge a3,a0,return_pt
+    lb  a4,0(a1)
+    lw  a5,0(a2)
+    beq a4,zero,stack_end
+    addi a1,a1,1
+    addi a2,a2,4
+    j   stack_begin
+  stack_end:
 
-    /* TODO: [p1-task3] finish task and return to the kernel */
-    /* NOTE: You need to replace this with new mechanism in p3-task2! */
-    //regain ra to return
-    la a0, USER_STACK
-    lw ra, 0(a0)
+  //then a5 is the stack addr assigned for task program, a4 is the task_tag and a1 is the addr
+    //mark it occupied
+    addi a4,a4,1
+    sw   a4,0(a1)
+    //old sp should be stored in new stack frame to get back
+    move a0,sp
+    //set the stack pointer
+    move sp,a5
+    //store ra and a1(tag_addr) and old sp
+    sw  ra,0(sp)
+    sw  a1,-4(sp)
+    sw  a0,-8(sp)   //old sp
+    addi sp,sp,-12
+    call main
+    addi sp,sp,12
+    lw  ra,0(sp)
+    lw  a1,-4(sp)
+    lw  sp,-8(sp)
+    //mark it free
+    sb  zero,0(a1)
+
+
+
+    # /* TODO: [p1-task3] enter main function */
+    # //la  sp, USER_STACK
+    # jal main
+
+    # /* TODO: [p1-task3] finish task and return to the kernel */
+    # /* NOTE: You need to replace this with new mechanism in p3-task2! */
+    # //regain ra to return
+    # la a0, RA_TMP
+    # lw ra, 0(a0)
+//return: when no stack is free, return directly
+return_pt:
     ret
 
 // while(1) loop, unreachable here
 //loop:
   //  wfi
   //  j loop
-
+  
 END(_start)
