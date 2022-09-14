@@ -263,7 +263,7 @@ int main(void)
     else if(func == '3'){
         bios_putstr("[Func3] Run task by bat2(name-order)\n\r");
         bios_putstr("\t bat info:");
-        for(int i=0;i<bat_sz1-1;i++)
+        for(int i=0;i<bat_sz2-1;i++)
             bios_putchar(batbuf2[i]);
         bios_putstr("\n\r");
         for(int i=0;i<bat_name_ptr;i++){
