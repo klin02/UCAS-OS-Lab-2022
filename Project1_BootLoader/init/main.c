@@ -107,6 +107,7 @@ static void init_bat(void)
             tmp=0;
         }
     }
+    bat_ptr--;
 }
 
 int main(void)
@@ -198,6 +199,9 @@ int main(void)
         bios_putchar(batbuf[i]);
     bios_putstr("\n\r");
     for(int i=0;i<bat_ptr;i++){
+        if(bat_array[i] < 0 || bat_array[i] >= tasknum)
+            bios_putstr("task id err!\n\r");
+        else
         load_task_img(bat_array[i]);
     }
     // Infinite while loop, where CPU stays in a low-power state (QAQQQQQQQQQQQ)

@@ -7,7 +7,7 @@
 //存储空闲栈帧号和数据的位置
 #define STACK_TAG_BASE 0x52300000
 #define STACK_ADDR_BASE 0x52310000
-
+// #define RA_TMP 0x53000000
 ENTRY(_start)
 
     //store ra to return kernel later  
@@ -31,31 +31,31 @@ ENTRY(_start)
   stack_begin:
     bge a3,a0,return_pt
     lb  a4,0(a1)
-    lw  a5,0(a2)
+    ld  a5,0(a2)
     beq a4,zero,stack_end
     addi a1,a1,1
-    addi a2,a2,4
+    addi a2,a2,8
     j   stack_begin
   stack_end:
 
   //then a5 is the stack addr assigned for task program, a4 is the task_tag and a1 is the addr
     //mark it occupied
     addi a4,a4,1
-    sw   a4,0(a1)
+    sb   a4,0(a1)
     //old sp should be stored in new stack frame to get back
     move a0,sp
     //set the stack pointer
     move sp,a5
     //store ra and a1(tag_addr) and old sp
-    sw  ra,0(sp)
-    sw  a1,-4(sp)
-    sw  a0,-8(sp)   //old sp
-    addi sp,sp,-12
+    sd  ra,0(sp)
+    sd  a1,-8(sp)
+    sd  a0,-16(sp)   //old sp
+    addi sp,sp,-24
     call main
-    addi sp,sp,12
-    lw  ra,0(sp)
-    lw  a1,-4(sp)
-    lw  sp,-8(sp)
+    addi sp,sp,24
+    ld  ra,0(sp)
+    ld  a1,-8(sp)
+    ld  sp,-16(sp)
     //mark it free
     sb  zero,0(a1)
 
