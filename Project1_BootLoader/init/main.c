@@ -84,30 +84,53 @@ static void init_task_info(void)
 }
 
 //task5: init task order
-char batbuf[512]={0};
-int bat_array[100];
-int bat_ptr=0;
-short bat_sz;
+char batbuf1[512]={0};
+char batbuf2[512]={0};
+int bat_id_array[100];
+char bat_name_array[20][20]; //num and length
+int bat_id_ptr=0;
+int bat_name_ptr=0;
+short bat_sz1;
+short bat_sz2;
 static void init_bat(void)
 {
     unsigned char *ptr = (unsigned int *)(USER_INFO_ADDR);
     ptr += 5*sizeof(short);
     ptr += tasknum*sizeof(task_info_t);
-    memcpy(&bat_sz,ptr,2);
+    memcpy(&bat_sz1,ptr,2);
     ptr+=2;
-    memcpy(batbuf,ptr,bat_sz);
+    memcpy(&bat_sz2,ptr,2);
+    ptr+=2;
+    memcpy(batbuf1,ptr,bat_sz1);
+    ptr+=bat_sz1;
+    memcpy(batbuf2,ptr,bat_sz2);
+
     int tmp=0;
     char tmpch;
-    for(int i=0;i<bat_sz;i++){
-        tmpch = batbuf[i];
+    for(int i=0;i<bat_sz1;i++){
+        tmpch = batbuf1[i];
         if(tmpch >= '0'&& tmpch<='9')
             tmp = tmp*10 + tmpch - '0';
         else{//此处判断条件因为buf最后一个不是数字
-            bat_array[bat_ptr++]=tmp;
+            bat_id_array[bat_id_ptr++]=tmp;
             tmp=0;
         }
     }
-    bat_ptr--;
+    bat_id_ptr--;
+
+    char tmpstr[20];
+    int tmpstr_ptr=0;
+    for(int i=0;i<bat_sz2;i++){
+        tmpch = batbuf2[i];
+        if((tmpch>='0'&&tmpch<='9') || (tmpch>='a'&&tmpch<='z') || (tmpch>='A'&&tmpch<='Z'))
+            tmpstr[tmpstr_ptr++] = tmpch;
+        else{
+            tmpstr[tmpstr_ptr] = '\0';
+            memcpy(bat_name_array[bat_name_ptr++],tmpstr,20);
+            tmpstr_ptr =0;
+        }
+    }
+    bat_name_ptr--;
 }
 
 int main(void)
@@ -147,63 +170,116 @@ int main(void)
     bios_putstr("Hello OS!\n\r");
     bios_putstr(buf);
 
-    // TODO[p1-task2] use jmptab to get info from screen and redisplay
-        //jmptab is covered by bios func
-        //!! note that when getchar haven't get a input, it will return EOF(-1)
-    // int screen_ch;
-    // while(1){
-    //     while((screen_ch = bios_getchar())==-1);    //loop until getting a char
-    //     bios_putchar(screen_ch);
-    // }
-    
-    // TODO: Load tasks by either task id [p1-task3] or task name [p1-task4],
-    //   and then execute them.
-        //task3: load task by id
-    //int taskid=0;
-
-        //task4: load task by name 
-    // int taskid = -1; //非法初值，用于判断名字是否合法
-    // char taskstr[10]={0};
-    // int strptr=0;
-    // bios_putstr("Please input task name (end with a non-num and non-letter char):\n\r");
-    // int ch;
-    // while(1){
-    //     taskid=-1;
-    //     bzero(taskstr,10);
-    //     strptr=0;
-    //     while(1){
-    //         while((ch = bios_getchar())==-1);    //loop until getting a char
-    //         bios_putchar(ch);
-    //         //only num and letter is allowed
-    //         if((ch>='0'&&ch<='9')||(ch>='a'&&ch<='z')||(ch>='A'&&ch<='Z'))
-    //             taskstr[strptr++]=ch;
-    //         else
-    //             break;
-    //     }
-    //     for(int i=0;i<tasknum;i++){
-    //         if(strcmp(tasks[i].name,taskstr)==0){
-    //             taskid = i;
-    //         }
-    //     }
-    //     if(taskid == -1)
-    //         bios_putstr("Illegal task name, please input again:\n\r");
-    //     else break;
-    // }
-    // load_task_img(taskid);
-
-        //task5: load task by bat_array
-    bios_putstr("task5: call func by bat:\n\r");
-    // bios_putstr(batbuf);
-    bios_putstr("\t bat info:");
-    for(int i=0;i<bat_sz-1;i++)
-        bios_putchar(batbuf[i]);
-    bios_putstr("\n\r");
-    for(int i=0;i<bat_ptr;i++){
-        if(bat_array[i] < 0 || bat_array[i] >= tasknum)
-            bios_putstr("task id err!\n\r");
+    int func;
+    bios_putstr("Press 0: run task by id\n\r");
+    bios_putstr("Press 1: run task by name\n\r");
+    bios_putstr("Press 2: run task by bat1.txt(id-order)\n\r");
+    bios_putstr("Press 3: run task by bat2.txt(name-order)\n\r");
+    while(1){
+        while((func = bios_getchar())==-1);    //loop until getting a char
+        bios_putchar(func);
+        //only num and letter is allowed
+        if(func>='0' && func<='3'){
+            bios_putstr("\n\r");
+            break;
+        } 
         else
-        load_task_img(bat_array[i]);
+            bios_putstr("\n\rIllegal func! Input again!\n\r");
     }
+    int ch;
+    int taskid = -1; //非法初值，用于判断名字是否合法
+    char taskstr[10]={0};
+    int strptr;
+    if(func == '0'){
+        bios_putstr("[Func 0] Run task by id, please input task id:\n\r");
+        int input_id;
+        int valid_tag; //防止未输入默认为0
+        while(1){
+            input_id = 0;
+            valid_tag =0;
+            while(1){
+                while((ch = bios_getchar())==-1);    //loop until getting a char
+                bios_putchar(ch);
+                //only num and letter is allowed
+                if(ch>='0' && ch<='9'){
+                    valid_tag =1;
+                    input_id = input_id*10 + (ch-'0');
+                }
+                else
+                    break;
+            }
+            if(input_id<0 || input_id>=tasknum || valid_tag==0)
+                bios_putstr("\n\rIllegal task id! Input again!\n\r");
+            else{
+                bios_putstr("\n\r");
+                load_task_img(input_id);
+            }
+            bios_putstr("Please input task id:\n\r");
+        }
+    }
+    else if(func == '1'){
+        bios_putstr("[Func1] Run task by name, please input task name:\n\r");
+        strptr=0;
+        while(1){
+            taskid=-1;
+            bzero(taskstr,10);
+            strptr=0;
+            while(1){
+                while((ch = bios_getchar())==-1);    //loop until getting a char
+                bios_putchar(ch);
+                //only num and letter is allowed
+                if((ch>='0'&&ch<='9')||(ch>='a'&&ch<='z')||(ch>='A'&&ch<='Z'))
+                    taskstr[strptr++]=ch;
+                else
+                    break;
+            }
+            for(int i=0;i<tasknum;i++){
+                if(strcmp(tasks[i].name,taskstr)==0){
+                    taskid = i;
+                }
+            }
+            if(taskid == -1)
+                bios_putstr("Illegal task name, please input again:\n\r");
+            else{
+                bios_putstr("\n\r");
+                load_task_img(taskid);
+            }
+            bios_putstr("Please input task name:\n\r");
+        }
+    }
+    else if(func == '2'){
+        bios_putstr("[Func2] Run task by bat1(id-order)\n\r");
+        bios_putstr("\t bat info:");
+        for(int i=0;i<bat_sz1-1;i++)
+            bios_putchar(batbuf1[i]);
+        bios_putstr("\n\r");
+        for(int i=0;i<bat_id_ptr;i++){
+        if(bat_id_array[i] < 0 || bat_id_array[i] >= tasknum)
+            bios_putstr("[bat1-err]task id err\n\r");
+        else
+            load_task_img(bat_id_array[i]);
+        }
+    }
+    else if(func == '3'){
+        bios_putstr("[Func3] Run task by bat2(name-order)\n\r");
+        bios_putstr("\t bat info:");
+        for(int i=0;i<bat_sz1-1;i++)
+            bios_putchar(batbuf2[i]);
+        bios_putstr("\n\r");
+        for(int i=0;i<bat_name_ptr;i++){
+            taskid = -1;
+            for(int j=0;j<tasknum;j++){
+                if(strcmp(tasks[j].name,bat_name_array[i])==0){
+                    taskid = j;
+                }
+            }
+            if(taskid == -1)
+                bios_putstr("[bat2-err]task name err\n\r");
+            else
+                load_task_img(taskid);
+        }
+    }
+
     // Infinite while loop, where CPU stays in a low-power state (QAQQQQQQQQQQQ)
     while (1)
     {

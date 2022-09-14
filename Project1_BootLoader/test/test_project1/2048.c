@@ -339,11 +339,9 @@ void initialize(int grid[][4])
 void menu()
 {
 	bios_putstr(" 2048 - Game\n * Use h-j-k-l / w-a-s-d keys to move the tiles.\n * When two tiles with the same number touch, they merge into one.\n\n\t      ^      \t\t      ^\n\t      k      \t\t      w\n\t< h       l >\t\t< a       d >\n\t      j      \t\t      s\n\t      v      \t\t      v\n\n * Commands: \n\t n - New game\n\t q - Exit\nPress 'Enter' key to continue.. ");
-	bios_putstr("bp 1\n\r");
 	int ch;
 	while ((ch = getchar()) != '\n' && ch != '\r')
 		;
-	bios_putstr("bp 1_1\n\r");
 }
 
 void print_scores(long bestScore, long score)
@@ -364,13 +362,11 @@ int main()
 	int score = 0;
 	int bestScore = 0;
 	initialize(grid);
-	bios_putstr("bp 2\n\r");
 	while (1)
 	{
 		clear();
 		print(grid);
         print_scores(bestScore, score);
-	bios_putstr("bp 3\n");
 		int status = onKeyPress(getchar(), grid, &score);
 		if (status == 3)
 		{
@@ -386,7 +382,6 @@ int main()
 
 		if(score > bestScore) bestScore = score;
 		status = check(grid);
-		bios_putstr("bp 4\n");
 		if (status == -1)
 		{
 			clear();
@@ -402,7 +397,6 @@ int main()
 			break;
 		}
 		bios_putstr("\n");
-		bios_putstr("bp 5\n");
 	}
 	return 0;
 }

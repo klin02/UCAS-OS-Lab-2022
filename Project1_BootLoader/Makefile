@@ -166,7 +166,8 @@ $(ELF_CREATEIMAGE): $(SRC_CREATEIMAGE)
 #	cd $(DIR_BUILD) && ./$(<F) --extended $(filter-out $(<F), $(^F))
 
 # task 5: the src will include a txt, load in app-info sector
-BAT_SRC = ./build/bat.txt
-image: $(ELF_CREATEIMAGE) $(ELF_BOOT) $(BAT_SRC) $(ELF_MAIN) $(ELF_USER) 
+BAT_SRC1 = ./build/bat1.txt
+BAT_SRC2 = ./build/bat2.txt
+image: $(ELF_CREATEIMAGE) $(ELF_BOOT) $(BAT_SRC1) $(BAT_SRC2) $(ELF_MAIN) $(ELF_USER) 
 	cd $(DIR_BUILD) && ./$(<F) --extended $(filter-out $(<F), $(^F))
 .PHONY: image

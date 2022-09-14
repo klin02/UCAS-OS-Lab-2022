@@ -59,17 +59,6 @@ ENTRY(_start)
     //mark it free
     sb  zero,0(a1)
 
-
-
-    # /* TODO: [p1-task3] enter main function */
-    # //la  sp, USER_STACK
-    # jal main
-
-    # /* TODO: [p1-task3] finish task and return to the kernel */
-    # /* NOTE: You need to replace this with new mechanism in p3-task2! */
-    # //regain ra to return
-    # la a0, RA_TMP
-    # lw ra, 0(a0)
 //return: when no stack is free, return directly
 return_pt:
     ret

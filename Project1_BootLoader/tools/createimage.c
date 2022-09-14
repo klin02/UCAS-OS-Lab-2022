@@ -50,7 +50,8 @@ static void write_img_info(int nbytes_kernel, task_info_t *taskinfo,
                            short tasknum, FILE *img);
 
 int info_sz; //用户信息占用位置，在kernel前,该变量所有子函数可见
-int bat_sz;
+short bat_sz1; //id bat
+short bat_sz2; //name bat
 
 int main(int argc, char **argv)
 {
@@ -91,8 +92,8 @@ static void create_image(int nfiles, char *files[])
     //两个以上程序 bootblock main及用户程序
     //task1-4:
     //int tasknum = nfiles - 2;
-    //task5: include bat.txt
-    int tasknum = nfiles-3;
+    //task5: include bat1.txt and bat2.txt
+    int tasknum = nfiles-4;
     int nbytes_kernel = 0;
     int phyaddr = 0;
     FILE *fp = NULL, *img = NULL;
@@ -108,26 +109,39 @@ static void create_image(int nfiles, char *files[])
     
     //task3的使用中只使用一次入参，此处需要使用备份fp
     char **nfl = files;
+    //bat1
     nfl ++; //!! 注意指针要跳过bl
     //考虑bat
     fp = fopen(*nfl,"r");
     assert(fp != NULL);
     char nouse_ch;
-    bat_sz =0 ;
+    bat_sz1 =0;
     while(!feof(fp)){
         nouse_ch = fgetc(fp);
         //printf("%c",nouse_ch);
-        bat_sz++;
+        bat_sz1++;
+    }
+    //printf("\nbat end\n");
+    fclose(fp);
+    //bat2
+    nfl++;
+    fp = fopen(*nfl,"r");
+    assert(fp != NULL);
+    bat_sz2 =0;
+    while(!feof(fp)){
+        nouse_ch = fgetc(fp);
+        //printf("%c",nouse_ch);
+        bat_sz2++;
     }
     //printf("\nbat end\n");
     fclose(fp);
     nfl++;
     //task5: 考虑到载入bat相关，info大小有所膨胀
-    info_sz = 6*sizeof(short) + tasknum*sizeof(task_info_t) + bat_sz;
+    info_sz = 7*sizeof(short) + tasknum*sizeof(task_info_t) + bat_sz1+bat_sz2;
     int cntaddr = SECTOR_SIZE + info_sz; //从第二个扇区kernel位置开始统计位置情况
-    for (int fidx = 2; fidx < nfiles; ++fidx){
-        //int taskidx = fidx - 2; //task4 从第三个(fidx=2)开始是测试任务
-        int taskidx = fidx - 3; 
+    for (int fidx = 3; fidx < nfiles; ++fidx){
+        //int taskidx = fidx - 3; //task4 从第三个(fidx=2)开始是测试任务
+        int taskidx = fidx - 4; 
         //record task info 
         if(taskidx>=0){
             taskinfo[taskidx].entry = cntaddr;
@@ -167,7 +181,7 @@ static void create_image(int nfiles, char *files[])
     /* for each input file */
     for (int fidx = 0; fidx < nfiles; ++fidx) {
         //注意对于bat.txt文件，读取方式不同，因此单独考虑
-        if(fidx == 1){ // bat.txt
+        if(fidx == 1 || fidx ==2){ // bat1.txt bat2.txt
             fp = fopen(*files, "r");
             assert(fp != NULL);
             while(!feof(fp)){
@@ -347,7 +361,8 @@ static void write_img_info(int nbytes_kern, task_info_t *taskinfo,
     fwrite(&tasknum,2,1,img);
     for(int i=0;i<tasknum;i++) 
         fwrite(&taskinfo[i],sizeof(task_info_t),1,img);
-    fwrite(&bat_sz,2,1,img);
+    fwrite(&bat_sz1,2,1,img);
+    fwrite(&bat_sz2,2,1,img);
 }
 
 /* print an error message and exit */
