@@ -51,5 +51,36 @@ typedef list_node_t list_head;
 #define LIST_HEAD(name) struct list_node name = {&(name), &(name)}
 
 /* TODO: [p2-task1] implement your own list API */
-
+//list_add 和 list_del将分别对应enqueue和dequeue
+//list_init中直接使用null初始化以降低复杂度
+static inline void list_init(list_head *head){
+    head->prev = NULL;
+    head->next = NULL;
+}
+static inline void list_add_tail(list_head *queue,list_node_t *node){
+    if(queue->prev == NULL && queue->next == NULL){
+        node->prev = node->next = NULL;
+        queue->prev = queue->next = node;
+    }
+    else{
+        queue->next->next = node;
+        node->prev = queue->next;
+        node->next = NULL; //双向链表，尾部置空
+        queue->next = node;
+    }
+}
+static inline void list_del_head(list_head *queue){
+    if(queue->prev == NULL && queue->next == NULL){
+        return;
+    }
+    else{
+        if(queue->prev->next ==NULL){//只有一个元素
+            queue->prev = queue->next = NULL;
+        }
+        else{
+            queue->prev->next->prev = NULL;
+            queue->prev = queue->prev->next;
+        }
+    }
+}
 #endif

@@ -43,12 +43,27 @@
 #include <type.h>
 #include <csr.h>
 
-#define USER_INFO_ADDR 0x52200000
+// 注意该地址应当与bootblock同步改变
+#define USER_INFO_ADDR 0x52500000
 
+#define TASK1_NUM 3
+
+char task1_name_list[5][10]={"print1","print2","fly"};
+
+//以下均已在sched.c/sched.h声明
+// /* current running task PCB */
+// extern pcb_t * volatile current_running;
+// extern pid_t process_id;
+
+// extern pcb_t pcb[NUM_MAX_TASK];
+// extern pcb_t pid0_pcb;
 extern void ret_from_exception();
 
 // Task info array
 task_info_t tasks[TASK_MAXNUM];
+short tasknum;
+//新增入队列和出队列函数，方便队列维护
+//定义在sched.h中，实现在sched.c中
 
 static void init_jmptab(void)
 {
@@ -88,7 +103,7 @@ static void init_task_info(void)
 
 static void init_pcb_stack(
     ptr_t kernel_stack, ptr_t user_stack, ptr_t entry_point,
-    pcb_t *pcb)
+    pcb_t *pcb)//当前kernel_stack仍处于栈顶，应当将pcb的该变量修改至switchto头部，从而使得swtch中可以直接切换
 {
      /* TODO: [p2-task3] initialization of registers on kernel stack
       * HINT: sp, ra, sepc, sstatus
@@ -105,16 +120,44 @@ static void init_pcb_stack(
      */
     switchto_context_t *pt_switchto =
         (switchto_context_t *)((ptr_t)pt_regs - sizeof(switchto_context_t));
-
+    //swtch存取寄存器的基址
+    pcb->kernel_sp = kernel_stack - sizeof(regs_context_t) - sizeof(switchto_context_t);
+    pt_switchto->regs[0] = entry_point; //ra
+    pt_switchto->regs[1] = pcb->kernel_sp; //sp
+    printl("pid %d ra %ld\n",pcb->pid,pt_switchto->regs[0]);
 }
 
 static void init_pcb(void)
 {
     /* TODO: [p2-task1] load needed tasks and init their corresponding PCB */
-
+    //初始化ready queue
+    list_init(&ready_queue);
+    int task_found;
+    for(int i=0;i<tasknum;i++){
+        task_found =0;
+        int j;
+        for(j=0;j<TASK1_NUM;j++){
+            if(strcmp(tasks[i].name,task1_name_list[j])==0){
+                task_found=1;
+                break;
+            }
+        }
+        if(task_found==0)
+            continue;
+        pcb[process_id].pid=process_id;     //完成初始化后加1
+        pcb[process_id].kernel_sp = allocKernelPage(1)+PAGE_SIZE;   //alloc返回的是栈底，需要先移动到栈顶再填数据
+        pcb[process_id].user_sp = allocUserPage(1)+PAGE_SIZE;
+        //注意task.entry只是镜像中偏移，实际计算需要通过taskid
+        ptr_t task_entrypoint = TASK_MEM_BASE + i*TASK_SIZE;
+        init_pcb_stack(pcb[process_id].kernel_sp,pcb[process_id].user_sp,task_entrypoint,&pcb[process_id]);
+        pcb[process_id].status = TASK_READY;
+        //cursor wakuptime暂时不初始化，list在入队列时初始化。
+        enqueue(&ready_queue,&pcb[process_id]);
+        process_id++;
+    }
 
     /* TODO: [p2-task1] remember to initialize 'current_running' */
-
+    current_running = &pid0_pcb;
 }
 
 static void init_syscall(void)
@@ -129,6 +172,10 @@ int main(void)
 
     // Init task information (〃'▽'〃)
     init_task_info();
+    
+    //新增：加载所有用户程序
+    for(int i=0;i<tasknum;i++)
+        load_task_img(i);
 
     // Init Process Control Blocks |•'-'•) ✧
     init_pcb();

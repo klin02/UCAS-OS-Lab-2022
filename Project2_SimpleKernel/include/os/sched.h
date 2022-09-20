@@ -70,6 +70,7 @@ typedef struct pcb
     reg_t user_sp;
 
     /* previous, next pointer */
+    //其中包含了指向前一个和后一个的指针
     list_node_t list;
 
     /* process id */
@@ -108,4 +109,6 @@ void do_sleep(uint32_t);
 void do_block(list_node_t *, list_head *queue);
 void do_unblock(list_node_t *);
 
+void enqueue(list_head* queue,pcb_t* pnode);
+pcb_t * dequeue(list_head* queue);
 #endif

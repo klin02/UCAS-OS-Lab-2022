@@ -13,7 +13,7 @@
 .equ ignore, 0x0
 
 // addr to store task-related arguments for kernel, behind all app in memeory
-.equ user_info_addr, 0x52200000
+.equ user_info_addr, 0x52500000
 
 .text
 .global main
