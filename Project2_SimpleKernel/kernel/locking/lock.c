@@ -8,6 +8,7 @@ mutex_lock_t mlocks[LOCK_NUM];
 void init_locks(void)
 {
     /* TODO: [p2-task2] initialize mlocks */
+    //需要对所有锁进行初始化
 }
 
 void spin_lock_init(spin_lock_t *lock)
