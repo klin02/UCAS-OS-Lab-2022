@@ -6,7 +6,7 @@
 // LOCK2_KEY is the key of this task. You can define it as you wish.
 // We use 42 here because it is "Answer to the Ultimate Question of Life,
 // the Universe, and Everything" :)
-#define LOCK2_KEY 42
+#define LOCK2_KEY 43
 
 static char blank[] = {"                                             "};
 
@@ -17,8 +17,9 @@ static char blank[] = {"                                             "};
 int main(void)
 {
     int print_location = 3;
-    int mutex_id = kernel_mutex_init(LOCK2_KEY);
-    assert(mutex_id >= 0);
+    // int mutex_id = kernel_mutex_init(LOCK2_KEY);
+    // assert(mutex_id >= 0);
+    kernel_mutex_init(LOCK2_KEY);
 
     while (1)
     {
@@ -30,7 +31,8 @@ int main(void)
 
         kernel_yield();
 
-        kernel_mutex_acquire(mutex_id);
+        //kernel_mutex_acquire(mutex_id);
+        kernel_mutex_acquire();
 
         for (int i = 0; i < 5; i++)
         {
@@ -45,7 +47,8 @@ int main(void)
         kernel_move_cursor(0, print_location);
         kernel_print("> [TASK] Has acquired lock and exited.\n", 0, 0);
 
-        kernel_mutex_release(mutex_id);
+        //kernel_mutex_release(mutex_id);
+        kernel_mutex_release();
 
         kernel_yield();
     }

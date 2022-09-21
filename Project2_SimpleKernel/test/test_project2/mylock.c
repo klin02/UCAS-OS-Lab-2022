@@ -2,12 +2,11 @@
 #include <assert.h>
 // #include <unistd.h>  // NOTE: use this header after implementing syscall!
 #include <kernel.h>
-//由于分开编译，无法直接使用lock.h库，只能通过跳转表过渡，需要修改的部分有：
-//
+
 // LOCK2_KEY is the key of this task. You can define it as you wish.
 // We use 42 here because it is "Answer to the Ultimate Question of Life,
 // the Universe, and Everything" :)
-#define LOCK2_KEY 42
+#define LOCK2_KEY 42 //测试不完全重合的锁
 
 static char blank[] = {"                                             "};
 
@@ -17,10 +16,9 @@ static char blank[] = {"                                             "};
 */
 int main(void)
 {
-    int print_location = 2;
+    int print_location = 4;
     // int mutex_id = kernel_mutex_init(LOCK2_KEY);
     // assert(mutex_id >= 0);
-    // 多锁状态，由id传递改为全局变量
     kernel_mutex_init(LOCK2_KEY);
 
     while (1)
@@ -29,7 +27,7 @@ int main(void)
         kernel_print("%s", (long)blank, 0);
 
         kernel_move_cursor(0, print_location);
-        kernel_print("> [TASK] Applying for a lock.\n", 0, 0);
+        kernel_print("> [MYTASK] Applying for a lock.\n", 0, 0);
 
         kernel_yield();
 
@@ -39,7 +37,7 @@ int main(void)
         for (int i = 0; i < 5; i++)
         {
             kernel_move_cursor(0, print_location);
-            kernel_print("> [TASK] Has acquired lock and running.(%d)\n", i, 0);
+            kernel_print("> [MYTASK] Has acquired lock and running.(%d)\n", i, 0);
             kernel_yield();
         }
 
@@ -47,7 +45,7 @@ int main(void)
         kernel_print("%s", (long)blank, 0);
 
         kernel_move_cursor(0, print_location);
-        kernel_print("> [TASK] Has acquired lock and exited.\n", 0, 0);
+        kernel_print("> [MYTASK] Has acquired lock and exited.\n", 0, 0);
 
         //kernel_mutex_release(mutex_id);
         kernel_mutex_release();
@@ -60,7 +58,7 @@ int main(void)
 
 // int main(void)
 // {
-//     int print_location = 2;
+//     int print_location = 3;
 //     int mutex_id = sys_mutex_init(LOCK2_KEY);
 //     assert(mutex_id >= 0);
 

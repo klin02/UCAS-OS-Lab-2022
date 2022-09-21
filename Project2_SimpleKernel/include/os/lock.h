@@ -31,7 +31,7 @@
 #include <os/list.h>
 
 #define LOCK_NUM 16
-
+#define TASK_MAXNUM      16
 typedef enum {
     UNLOCKED,
     LOCKED,
@@ -49,6 +49,13 @@ typedef struct mutex_lock
     int key;
 } mutex_lock_t;
 
+//新增结构，支持多把锁
+typedef struct lk_arr{
+    int lock_hit[LOCK_NUM];
+} lock_array;
+
+lock_array lock_map[TASK_MAXNUM]; //对应不同pid的命中锁状态
+
 void init_locks(void);
 
 void spin_lock_init(spin_lock_t *lock);
@@ -56,8 +63,11 @@ int spin_lock_try_acquire(spin_lock_t *lock);
 void spin_lock_acquire(spin_lock_t *lock);
 void spin_lock_release(spin_lock_t *lock);
 
-int do_mutex_lock_init(int key);
-void do_mutex_lock_acquire(int mlock_idx);
-void do_mutex_lock_release(int mlock_idx);
+//int do_mutex_lock_init(int key);
+// void do_mutex_lock_acquire(int mlock_idx);
+// void do_mutex_lock_release(int mlock_idx);
+void do_mutex_lock_init(int key);
+void do_mutex_lock_acquire();
+void do_mutex_lock_release();
 
 #endif

@@ -38,7 +38,7 @@ void do_scheduler(void)
 {
     // TODO: [p2-task3] Check sleep queue to wake up PCBs
 
-    printl("begin schedule\n");
+    //printl("begin schedule\n");
     // TODO: [p2-task1] Modify the current_running pointer.
     //将cur加入ready queue。同时从中拿出next
     pcb_t * next_running;
@@ -53,9 +53,6 @@ void do_scheduler(void)
 
     next_running->status = TASK_RUNNING;
     current_running = next_running;
-    printl("begin swtch\n");
-    printl("pid %d %d\n",last_running->pid,current_running->pid);
-    printl("knsp %ld %ld\n",last_running->kernel_sp,current_running->kernel_sp);
     // TODO: [p2-task1] switch_to current_running
     switch_to(last_running,current_running);
 }
@@ -84,6 +81,8 @@ void do_unblock(list_node_t *pcb_node)
     pcb_t *pcb = list_entry(pcb_node,pcb_t,list);
     pcb->status = TASK_READY;
     enqueue(&ready_queue,pcb);
+    if(pcb->pid == 4)
+        printl("unblock my\n");
 }
 
 void enqueue(list_head* queue,pcb_t* pnode){

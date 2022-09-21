@@ -56,19 +56,34 @@ static inline void kernel_yield(void)
     call_jmptab(YIELD, 0, 0, 0);
 }
 
-static inline int kernel_mutex_init(int key)
+// static inline int kernel_mutex_init(int key)
+// {
+//     return call_jmptab(MUTEX_INIT, (long)key, 0, 0);
+// }
+
+// static inline void kernel_mutex_acquire(int mlock_idx)
+// {
+//     call_jmptab(MUTEX_ACQ, (long)mlock_idx, 0, 0);
+// }
+
+// static inline void kernel_mutex_release(int mlock_idx)
+// {
+//     call_jmptab(MUTEX_RELEASE, (long)mlock_idx, 0, 0);
+// }
+
+static inline void kernel_mutex_init(int key)
 {
-    return call_jmptab(MUTEX_INIT, (long)key, 0, 0);
+    call_jmptab(MUTEX_INIT, (long)key, 0, 0);
 }
 
-static inline void kernel_mutex_acquire(int mlock_idx)
+static inline void kernel_mutex_acquire(void)
 {
-    call_jmptab(MUTEX_ACQ, (long)mlock_idx, 0, 0);
+    call_jmptab(MUTEX_ACQ, 0, 0, 0);
 }
 
-static inline void kernel_mutex_release(int mlock_idx)
+static inline void kernel_mutex_release(void)
 {
-    call_jmptab(MUTEX_RELEASE, (long)mlock_idx, 0, 0);
+    call_jmptab(MUTEX_RELEASE, 0, 0, 0);
 }
 
 #endif

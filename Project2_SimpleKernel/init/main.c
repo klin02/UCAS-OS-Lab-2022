@@ -48,9 +48,10 @@
 
 #define TASK1_NUM 3
 #define TASK2_NUM 2
+#define MY_TASK_NUM 1
 char task1_name_list[5][10]={"print1","print2","fly"};
 char task2_name_list[5][10]={"lock1","lock2"};
-
+char mytask_name_list[5][10]={"mylock"};
 //以下均已在sched.c/sched.h声明
 // /* current running task PCB */
 // extern pcb_t * volatile current_running;
@@ -125,7 +126,6 @@ static void init_pcb_stack(
     pcb->kernel_sp = kernel_stack - sizeof(regs_context_t) - sizeof(switchto_context_t);
     pt_switchto->regs[0] = entry_point; //ra
     pt_switchto->regs[1] = pcb->kernel_sp; //sp
-    printl("pid %d ra %ld\n",pcb->pid,pt_switchto->regs[0]);
 }
 
 static void init_pcb(void)
@@ -146,6 +146,14 @@ static void init_pcb(void)
         if(task_found==0){ // 注意task1已经找到之后不需进行，避免改变j
             for(j=0;j<TASK2_NUM;j++){
                 if(strcmp(tasks[i].name,task2_name_list[j])==0){
+                    task_found=1;
+                    break;
+                }
+            }
+        }
+        if(task_found==0){ // 注意task1已经找到之后不需进行，避免改变j
+            for(j=0;j<MY_TASK_NUM;j++){
+                if(strcmp(tasks[i].name,mytask_name_list[j])==0){
                     task_found=1;
                     break;
                 }
