@@ -18,6 +18,16 @@ pcb_t pid0_pcb = {
 LIST_HEAD(ready_queue);
 LIST_HEAD(sleep_queue);
 
+//(type *)0强制转化为地址为0的type类型指针。下述宏定义获得了member成员相对于type指针入口的偏移
+#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
+//第一行将进行类型检查，确定ptr与member类型是否一致。第二行则是根据成员变量减去偏移值得到了容器值。
+#define list_entry(ptr, type, member)                    \
+    ({                                                     \
+        const typeof(((type *)0)->member) *__mptr = (ptr); \
+        (type *)((char *)__mptr - offsetof(type, member)); \
+    })
+
+
 /* current running task PCB */
 pcb_t * volatile current_running;
 
@@ -36,7 +46,7 @@ void do_scheduler(void)
     pcb_t * last_running;
     last_running = current_running;
 
-    if(current_running->pid != 0){//task1中只需考虑pcb0不回收，后续任务需要考虑状态
+    if(current_running->pid != 0 && current_running->status != TASK_BLOCKED){//task1中只需考虑pcb0不回收，后续任务需要考虑状态
         current_running->status = TASK_READY;
         enqueue(&ready_queue,current_running);
     }
@@ -62,22 +72,19 @@ void do_sleep(uint32_t sleep_time)
 void do_block(list_node_t *pcb_node, list_head *queue)
 {
     // TODO: [p2-task2] block the pcb task into the block queue
+    pcb_t *pcb = list_entry(pcb_node,pcb_t,list);
+    pcb->status = TASK_BLOCKED;
+    enqueue(queue,pcb);
 }
 
 void do_unblock(list_node_t *pcb_node)
 {
     // TODO: [p2-task2] unblock the `pcb` from the block queue
+    //完成改变状态和入ready队列
+    pcb_t *pcb = list_entry(pcb_node,pcb_t,list);
+    pcb->status = TASK_READY;
+    enqueue(&ready_queue,pcb);
 }
-
-//(type *)0强制转化为地址为0的type类型指针。下述宏定义获得了member成员相对于type指针入口的偏移
-#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
-//第一行将进行类型检查，确定ptr与member类型是否一致。第二行则是根据成员变量减去偏移值得到了容器值。
-#define list_entry(ptr, type, member)                    \
-    ({                                                     \
-        const typeof(((type *)0)->member) *__mptr = (ptr); \
-        (type *)((char *)__mptr - offsetof(type, member)); \
-    })
-
 
 void enqueue(list_head* queue,pcb_t* pnode){
     list_node_t *lnode = &(pnode->list);

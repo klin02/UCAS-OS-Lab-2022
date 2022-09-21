@@ -47,8 +47,9 @@
 #define USER_INFO_ADDR 0x52500000
 
 #define TASK1_NUM 3
-
+#define TASK2_NUM 2
 char task1_name_list[5][10]={"print1","print2","fly"};
+char task2_name_list[5][10]={"lock1","lock2"};
 
 //以下均已在sched.c/sched.h声明
 // /* current running task PCB */
@@ -140,6 +141,14 @@ static void init_pcb(void)
             if(strcmp(tasks[i].name,task1_name_list[j])==0){
                 task_found=1;
                 break;
+            }
+        }
+        if(task_found==0){ // 注意task1已经找到之后不需进行，避免改变j
+            for(j=0;j<TASK2_NUM;j++){
+                if(strcmp(tasks[i].name,task2_name_list[j])==0){
+                    task_found=1;
+                    break;
+                }
             }
         }
         if(task_found==0)
