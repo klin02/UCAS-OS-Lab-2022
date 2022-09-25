@@ -73,6 +73,7 @@ void spin_lock_release(spin_lock_t *lock)
 // {
 //     /* TODO: [p2-task2] acquire mutex lock */
 //     //如果锁已经被占用，需要直接调度
+//     while(1){
 //     if(mlocks[mlock_idx].lock.status == LOCKED){
 //         do_block(&(current_running->list),&(mlocks[mlock_idx].block_queue)); // 改变pcb状态和进队列均在此完成
 //         do_scheduler();
@@ -80,6 +81,8 @@ void spin_lock_release(spin_lock_t *lock)
 //     }
 //     else{
 //         mlocks[mlock_idx].lock.status = LOCKED;
+//         break;
+//     }
 //     }
 // }
 
@@ -92,6 +95,7 @@ void spin_lock_release(spin_lock_t *lock)
 //         dequeue(&(mlocks[mlock_idx].block_queue));
 //         do_unblock(&(tmp->list)); //改变状态及入队列
 //     }
+//     mlocks[mlock_idx].lock.status = UNLOCKED;
 // }
 
 //lockmap和currentrunning为全局变量，可以直接用
