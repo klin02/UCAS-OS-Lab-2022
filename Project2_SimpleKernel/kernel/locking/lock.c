@@ -160,7 +160,7 @@ void do_mutex_lock_release()
     pcb_t * tmppcb;
     int tmppid;
     int isfirst;
-    int used[LOCK_NUM]={0};
+    int used[TASK_MAXNUM]={0};
     int other_block;
     for(int i=0;i<hit_len;i++){
         head = mlocks[hit_arr[i]].block_queue.prev;
