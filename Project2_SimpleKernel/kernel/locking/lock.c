@@ -140,6 +140,8 @@ void do_mutex_lock_acquire()
         for(int i=0;i<hit_len;i++){
             mlocks[hit_arr[i]].lock.status = LOCKED;
         }
+        //当前线程成功获取锁，更改统计次数
+        current_running->lock_time++;
         break; //结束申请
     }
     }
@@ -159,6 +161,13 @@ void do_mutex_lock_release()
     //1.对每个队列，由于可能头出尾入，头部需要拿出做终止条件。
     //2.考虑不重复进入ready队列，因此对成功入ready栈的使用used记录，之后遍历如果为used，可以直接出队。
     //2.对每次队头对应的pcb，依次检查其他非命中锁的阻塞状态，如果仍是阻塞，需要再次入队。
+    //处理进程饥饿，获取锁次数越多，优先级越低。设置ROB(Re-order Buffer)进行排序。
+    pcb_t * ROB[TASK_MAXNUM];
+    int ROB_len = 0;
+    for(int i=0;i<TASK_MAXNUM;i++)
+        ROB[i] = NULL;
+    pcb_t * mid; //为冒泡排序准备的中间态
+
     list_node_t * head; //队头标记 
     list_node_t * tmp;
     pcb_t * tmppcb;
@@ -206,10 +215,26 @@ void do_mutex_lock_release()
                 else{//没有其他占用的锁，可以成功释放
                     used[tmppid] = 1;
                     dequeue(&(mlocks[hit_arr[i]].block_queue));
-                    do_unblock(tmp); //包含改变状态以及入ready queue
+                    //进行重排之后再按照优先级进入准备队列
+                    ROB[ROB_len++] = tmppcb;
+                    //do_unblock(tmp); //包含改变状态以及入ready queue
                 }
             }
         }
+    }
+    //遍历所有锁阻塞队列后，按照优先级（获取次数越多，优先级越低）重排
+    //冒泡排序锁次数多的后移，升序排列
+    for(int i=0;i<ROB_len-1;i++)
+        for(int j=0;j<ROB_len-1-i;j++){
+            if(ROB[j]->lock_time > ROB[j+1]->lock_time){
+                mid = ROB[j];
+                ROB[j] = ROB[j+1];
+                ROB[j+1] = mid;
+            }
+        }
+    //将重排后的队列入队ready_queue
+    for(int i=0;i<ROB_len;i++){
+        do_unblock(&(ROB[i]->list));        
     }
     //处理完所有锁对应的队列后，进行锁的释放
     for(int i=0;i<hit_len;i++){

@@ -145,6 +145,8 @@ static void init_pcb(void)
         ptr_t task_entrypoint = TASK_MEM_BASE + task_id*TASK_SIZE;
         init_pcb_stack(pcb[process_id].kernel_sp,pcb[process_id].user_sp,task_entrypoint,&pcb[process_id]);
         pcb[process_id].status = TASK_READY;
+        //为多锁准备
+        pcb[process_id].lock_time = 0;
         //cursor wakuptime暂时不初始化，list在入队列时初始化。
         enqueue(&ready_queue,&pcb[process_id]);
         process_id++;

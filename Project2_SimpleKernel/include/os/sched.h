@@ -86,6 +86,8 @@ typedef struct pcb
     /* time(seconds) to wake up sleeping PCB */
     uint64_t wakeup_time;
 
+    //为多锁状态进程公平获取锁准备，获取次数越多，优先级越低。需初始化
+    int lock_time;
 } pcb_t;
 
 /* ready queue to run */

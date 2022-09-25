@@ -6,7 +6,7 @@
 // LOCK2_KEY is the key of this task. You can define it as you wish.
 // We use 42 here because it is "Answer to the Ultimate Question of Life,
 // the Universe, and Everything" :)
-#define LOCK2_KEY 42
+#define LOCK2_KEY 43
 
 static char blank[] = {"                                             "};
 
