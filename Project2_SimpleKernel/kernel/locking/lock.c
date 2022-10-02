@@ -104,7 +104,7 @@ void do_mutex_lock_init(int key){
     int id1 = key % LOCK_NUM;
     int id2 = (key+1) % LOCK_NUM;
     int pid = current_running->pid;
-    if(key == 43) printl("my pid %d\n",pid);
+    //if(key == 43) printl("my pid %d\n",pid);
     lock_map[pid].lock_hit[id1]=1;
     lock_map[pid].lock_hit[id2]=1;
 }
@@ -206,8 +206,8 @@ void do_mutex_lock_release()
                     if(other_block)
                         break;
                 }
-                if(tmppid ==4)
-                printl("otherblock %d\n",other_block);
+                //if(tmppid ==4)
+                //printl("otherblock %d\n",other_block);
                 if(other_block){//需要重新入队
                     dequeue(&(mlocks[hit_arr[i]].block_queue));
                     enqueue(&(mlocks[hit_arr[i]].block_queue),tmppcb);

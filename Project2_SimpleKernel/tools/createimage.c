@@ -111,6 +111,7 @@ static void create_image(int nfiles, char *files[])
             taskinfo[taskidx].entry = cntaddr;
             taskinfo[taskidx].size = 0; //initial
             //taskinfo[taskidx].id = taskidx;
+            printf("---id:%d entry:%x size:%x\n",taskidx,taskinfo[taskidx].entry,taskinfo[taskidx].size);
             strcpy(taskinfo[taskidx].name,*nfl);
         }
 
@@ -302,6 +303,7 @@ static void write_img_info(int nbytes_kern, task_info_t *taskinfo,
     fwrite(&tasknum,2,1,img);
     for(int i=0;i<tasknum;i++) 
         fwrite(&taskinfo[i],sizeof(task_info_t),1,img);
+    printf("!!!lock1: id:%d entry:%x size:%ld\n",6,taskinfo[6].entry,taskinfo[6].size);
 }
 
 /* print an error message and exit */

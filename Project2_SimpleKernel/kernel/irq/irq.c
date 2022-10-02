@@ -7,6 +7,9 @@
 #include <assert.h>
 #include <screen.h>
 
+//不调用csr.h库，新增宏定义
+#define SCAUSE_IRQ_FLAG   (1UL << 63)
+
 handler_t irq_table[IRQC_COUNT];
 handler_t exc_table[EXCC_COUNT];
 
@@ -14,6 +17,13 @@ void interrupt_helper(regs_context_t *regs, uint64_t stval, uint64_t scause)
 {
     // TODO: [p2-task3] & [p2-task4] interrupt handler.
     // call corresponding handler by the value of `scause`
+    //相关定义见csr.h
+    uint64_t type = scause & SCAUSE_IRQ_FLAG; //除最高位全零
+    uint64_t code = scause & ~SCAUSE_IRQ_FLAG; //最高位为零
+    if(type)
+        irq_table[code](regs,stval,scause);
+    else
+        exc_table[code](regs,stval,scause);
 }
 
 void handle_irq_timer(regs_context_t *regs, uint64_t stval, uint64_t scause)
@@ -26,11 +36,16 @@ void init_exception()
 {
     /* TODO: [p2-task3] initialize exc_table */
     /* NOTE: handle_syscall, handle_other, etc.*/
-
+    //handler_t 是指向void(...)函数的指针
+    for(int i=0;i<EXCC_COUNT;i++)
+        exc_table[i] = &handle_other;
+    exc_table[EXCC_SYSCALL] = &handle_syscall;
     /* TODO: [p2-task4] initialize irq_table */
     /* NOTE: handle_int, handle_other, etc.*/
 
     /* TODO: [p2-task3] set up the entrypoint of exceptions */
+    //调用汇编函数setup_exception 完成相关操作
+    setup_exception();
 }
 
 void handle_other(regs_context_t *regs, uint64_t stval, uint64_t scause)

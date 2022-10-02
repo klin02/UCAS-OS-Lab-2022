@@ -44,11 +44,17 @@
 #include <csr.h>
 
 // 注意该地址应当与bootblock同步改变
-#define USER_INFO_ADDR 0x52500000
+#define USER_INFO_ADDR 0x52400000
 
 //规定测试任务启动顺序
-#define TASK_LIST_LEN 6
-char task_name_list [16][10] = {"print1","print2","fly","lock1","lock2","mylock"};
+#define TASK_LIST_LEN 1
+//char task_name_list [16][10] = {"print1","print2","fly","lock1","lock2","mylock"};
+//char task_name_list [16][10] = {"print1","print2","fly","lock1"};
+//char task_name_list [16][10] = {"print1","print2","fly"};
+char task_name_list [16][10] = {"lock1"};
+//仅加载测试任务
+int load_list[16];
+int load_len=0;
 //以下均已在sched.c/sched.h声明
 // /* current running task PCB */
 // extern pcb_t * volatile current_running;
@@ -88,7 +94,7 @@ static void init_task_info(void)
     // TODO: [p1-task4] Init 'tasks' array via reading app-info sector
     // NOTE: You need to get some related arguments from bootblock first
     // 根据用户信息扇区获取（已加载到内存），只需加载选定程序即可，在load中实现
-    unsigned char * ptr = (unsigned int *)USER_INFO_ADDR;
+    unsigned char * ptr = (unsigned long *)USER_INFO_ADDR;
     ptr += 8;
     //tasknum is define in task.h
     memcpy(&tasknum,ptr,2);
@@ -111,7 +117,17 @@ static void init_pcb_stack(
       */
     regs_context_t *pt_regs =
         (regs_context_t *)(kernel_stack - sizeof(regs_context_t));
+    //task3： 需要将其余regs清零，设置sp ra。 设置sepc和sstatus符合用户态
+    for(int i=0;i<32;i++)
+        pt_regs->regs[i]=0;
+    //详细布局见regs.h
+    pt_regs->regs[1] = entry_point;
+    pt_regs->regs[2] = user_stack; //此处为用户栈
 
+    pt_regs->sepc = entry_point; 
+    //根据讲义，需要初始化SPP(0)和SPIE(1)，分别表示之前特权级和使能状态
+    //宏定义见csr.h
+    pt_regs->sstatus = SR_SPIE & ~SR_SPP;
 
     /* TODO: [p2-task1] set sp to simulate just returning from switch_to
      * NOTE: you should prepare a stack, and push some values to
@@ -138,6 +154,7 @@ static void init_pcb(void)
                 break;
             }
         }
+        load_list[load_len++] = task_id; //测试程序列表
         pcb[process_id].pid=process_id;     //完成初始化后加1
         pcb[process_id].kernel_sp = allocKernelPage(1)+PAGE_SIZE;   //alloc返回的是栈底，需要先移动到栈顶再填数据
         pcb[process_id].user_sp = allocUserPage(1)+PAGE_SIZE;
@@ -158,6 +175,18 @@ static void init_pcb(void)
 static void init_syscall(void)
 {
     // TODO: [p2-task3] initialize system call table.
+    // 与跳转表实现略有不同，并非固定地址，相应数组已定义在syscall.c中
+    // 对应函数分别位于sched.c screen.c time.c lock.c
+    syscall[SYSCALL_SLEEP]           = (long(*)())do_sleep;
+    syscall[SYSCALL_YIELD]          = (long(*)())do_scheduler;
+    syscall[SYSCALL_WRITE]          = (long(*)())screen_write;
+    syscall[SYSCALL_CURSOR]         = (long(*)())screen_move_cursor;
+    syscall[SYSCALL_REFLUSH]        = (long(*)())screen_reflush;
+    syscall[SYSCALL_GET_TIMEBASE]   = (long(*)())get_time_base;
+    syscall[SYSCALL_GET_TICK]       = (long(*)())get_ticks;
+    syscall[SYSCALL_LOCK_INIT]      = (long(*)())do_mutex_lock_init;
+    syscall[SYSCALL_LOCK_ACQ]       = (long(*)())do_mutex_lock_acquire;
+    syscall[SYSCALL_LOCK_RELEASE]   = (long(*)())do_mutex_lock_release;
 }
 
 int main(void)
@@ -168,14 +197,18 @@ int main(void)
     // Init task information (〃'▽'〃)
     init_task_info();
     
-    //新增：加载所有用户程序
-    for(int i=0;i<tasknum;i++)
-        load_task_img(i);
+    
 
     // Init Process Control Blocks |•'-'•) ✧
     init_pcb();
     printk("> [INIT] PCB initialization succeeded.\n");
 
+    //仅加载待测程序
+    // for(int i=0;i<load_len;i++)
+    //     load_task_img(load_list[i]);
+    
+    int tmplid = load_list[0];
+    printk("lock1 %d %ld %ld\n",tmplid,tasks[tmplid].entry,tasks[tmplid].size);
     // Read CPU frequency (｡•ᴗ-)_
     time_base = bios_read_fdt(TIMEBASE);
 
