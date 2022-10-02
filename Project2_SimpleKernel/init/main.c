@@ -47,14 +47,10 @@
 #define USER_INFO_ADDR 0x52400000
 
 //规定测试任务启动顺序
-#define TASK_LIST_LEN 1
-//char task_name_list [16][10] = {"print1","print2","fly","lock1","lock2","mylock"};
-//char task_name_list [16][10] = {"print1","print2","fly","lock1"};
-//char task_name_list [16][10] = {"print1","print2","fly"};
-char task_name_list [16][10] = {"lock1"};
-//仅加载测试任务
-int load_list[16];
-int load_len=0;
+#define TASK_LIST_LEN 8
+char task_name_list [16][10] = {"print1","print2","fly","lock1","lock2","mylock","sleep","timer"};
+// #define TASK_LIST_LEN 1
+// char task_name_list [16][10] = {"print1"};
 //以下均已在sched.c/sched.h声明
 // /* current running task PCB */
 // extern pcb_t * volatile current_running;
@@ -121,13 +117,17 @@ static void init_pcb_stack(
     for(int i=0;i<32;i++)
         pt_regs->regs[i]=0;
     //详细布局见regs.h
-    pt_regs->regs[1] = entry_point;
+    //pt_regs->regs[1] = entry_point;
     pt_regs->regs[2] = user_stack; //此处为用户栈
+    pt_regs->regs[4] = (reg_t)pcb; //tp指向自身，保证恢复上下文不变 未恢复tp
 
-    pt_regs->sepc = entry_point; 
+    //do scheduler的switch将返回ret from exception 其中将会恢复上下文并sret，这里返回函数入口
+    pt_regs->sepc = entry_point;
     //根据讲义，需要初始化SPP(0)和SPIE(1)，分别表示之前特权级和使能状态
     //宏定义见csr.h
     pt_regs->sstatus = SR_SPIE & ~SR_SPP;
+    pt_regs->sbadaddr = 0;
+    pt_regs->scause =0;
 
     /* TODO: [p2-task1] set sp to simulate just returning from switch_to
      * NOTE: you should prepare a stack, and push some values to
@@ -137,7 +137,7 @@ static void init_pcb_stack(
         (switchto_context_t *)((ptr_t)pt_regs - sizeof(switchto_context_t));
     //swtch存取寄存器的基址
     pcb->kernel_sp = kernel_stack - sizeof(regs_context_t) - sizeof(switchto_context_t);
-    pt_switchto->regs[0] = entry_point; //ra
+    pt_switchto->regs[0] = (reg_t)&ret_from_exception; //ra 函数需要取地址
     pt_switchto->regs[1] = pcb->kernel_sp; //sp
 }
 
@@ -146,6 +146,8 @@ static void init_pcb(void)
     /* TODO: [p2-task1] load needed tasks and init their corresponding PCB */
     //初始化ready queue
     list_init(&ready_queue);
+    //part2:初始化sleep queue
+    list_init(&sleep_queue);
     int task_id;
     for(int i=0;i<TASK_LIST_LEN;i++){
         for(int j=0;j<tasknum;j++){
@@ -154,8 +156,8 @@ static void init_pcb(void)
                 break;
             }
         }
-        load_list[load_len++] = task_id; //测试程序列表
         pcb[process_id].pid=process_id;     //完成初始化后加1
+        pcb[process_id].wakeup_time = 0;
         pcb[process_id].kernel_sp = allocKernelPage(1)+PAGE_SIZE;   //alloc返回的是栈底，需要先移动到栈顶再填数据
         pcb[process_id].user_sp = allocUserPage(1)+PAGE_SIZE;
         //注意task.entry只是镜像中偏移，实际计算需要通过taskid
@@ -197,18 +199,16 @@ int main(void)
     // Init task information (〃'▽'〃)
     init_task_info();
     
+    //加载全部程序
+    for(int i=0;i<tasknum;i++)
+        load_task_img(i);
     
-
     // Init Process Control Blocks |•'-'•) ✧
     init_pcb();
     printk("> [INIT] PCB initialization succeeded.\n");
 
-    //仅加载待测程序
-    // for(int i=0;i<load_len;i++)
-    //     load_task_img(load_list[i]);
     
-    int tmplid = load_list[0];
-    printk("lock1 %d %ld %ld\n",tmplid,tasks[tmplid].entry,tasks[tmplid].size);
+
     // Read CPU frequency (｡•ᴗ-)_
     time_base = bios_read_fdt(TIMEBASE);
 

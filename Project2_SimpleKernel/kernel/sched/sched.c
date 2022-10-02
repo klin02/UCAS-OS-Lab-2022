@@ -37,7 +37,7 @@ pid_t process_id = 1;
 void do_scheduler(void)
 {
     // TODO: [p2-task3] Check sleep queue to wake up PCBs
-
+    check_sleeping();
     //printl("begin schedule\n");
     // TODO: [p2-task1] Modify the current_running pointer.
     //将cur加入ready queue。同时从中拿出next
@@ -64,6 +64,9 @@ void do_sleep(uint32_t sleep_time)
     // 1. block the current_running
     // 2. set the wake up time for the blocked task
     // 3. reschedule because the current_running is blocked.
+    current_running->wakeup_time = get_timer() + sleep_time;
+    do_block(&(current_running->list),&sleep_queue); //改变状态及入队列
+    do_scheduler(); //状态改变，不进ready queue。 通过do_scheduler开头的timechech唤醒
 }
 
 void do_block(list_node_t *pcb_node, list_head *queue)
@@ -81,8 +84,8 @@ void do_unblock(list_node_t *pcb_node)
     pcb_t *pcb = list_entry(pcb_node,pcb_t,list);
     pcb->status = TASK_READY;
     enqueue(&ready_queue,pcb);
-    if(pcb->pid == 4)
-        printl("unblock my\n");
+    // if(pcb->pid == 4)
+    //     printl("unblock my\n");
 }
 
 void enqueue(list_head* queue,pcb_t* pnode){

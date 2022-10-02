@@ -5,7 +5,7 @@ static char blank[] = {"                                                "};
 
 int main(void)
 {
-    int print_location = 4;
+    int print_location = 5;
     int sleep_time = 5;
 
     while (1)

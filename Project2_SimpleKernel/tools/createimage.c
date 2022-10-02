@@ -21,10 +21,10 @@
 
 /* TODO: [p1-task4] design your own task_info_t */
 typedef struct {
-    short entry;
-    short size;
+    int entry;
+    int size;
     char  name[10];
-} task_info_t; //15 byte
+} task_info_t; //18 byte
 
 #define TASK_MAXNUM 16
 static task_info_t taskinfo[TASK_MAXNUM];

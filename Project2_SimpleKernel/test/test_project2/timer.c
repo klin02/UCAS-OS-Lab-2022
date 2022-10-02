@@ -5,7 +5,7 @@
 
 int main(void)
 {
-    int print_location = 5;
+    int print_location = 6;
     uint32_t time_base = sys_get_timebase();
 
     while (1)

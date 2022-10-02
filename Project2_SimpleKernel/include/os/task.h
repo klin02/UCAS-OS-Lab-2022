@@ -9,10 +9,10 @@
 
 /* TODO: [p1-task4] implement your own task_info_t! */
 typedef struct {
-    short entry;
-    short size;
+    int entry;
+    int size;
     char  name[10];
-} task_info_t; //15 byte
+} task_info_t; //18 byte
 
 extern short tasknum; //set for main.c and loader.c
 extern task_info_t tasks[TASK_MAXNUM];

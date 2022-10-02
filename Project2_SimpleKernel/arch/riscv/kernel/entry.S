@@ -13,7 +13,7 @@
   addi sp, sp, SWITCH_TO_SIZE
   sd  zero, OFFSET_REG_ZERO(sp)
   sd  ra,   OFFSET_REG_RA(sp)
-  sd  sp,   OFFSET_REG_SP(sp)
+  # sd  sp,   OFFSET_REG_SP(sp)
   sd  gp,   OFFSET_REG_GP(sp)
   sd  tp,   OFFSET_REG_TP(sp)
   sd  t0,   OFFSET_REG_T0(sp)
@@ -44,6 +44,8 @@
   sd  t5,   OFFSET_REG_T5(sp)
   sd  t6,   OFFSET_REG_T6(sp)
 
+  ld  t0,   PCB_USER_SP(tp)
+  sd  t0,   OFFSET_REG_SP(sp)
   /*
    * Disable user-mode memory access as it should only be set in the
    * actual user copy routines.
@@ -53,34 +55,38 @@
    */
   # csrc指令：按照t0对应位将前者清零
   li t0, SR_SUM | SR_FS
-  csrc sstatus, t0
+  csrc CSR_SSTATUS, t0
   /* TODO: [p2-task3] save sstatus, sepc, stval and scause on kernel stack */
   # csr-related: 注意存储badaddr的是stval
-  csrr  t0, sstatus
-  csrr  t1, sepc
-  csrr  t2, stval
-  csrr  t3, scause
+  csrr  t0, CSR_SSTATUS
+  csrr  t1, CSR_SEPC
+  csrr  t2, CSR_STVAL
+  csrr  t3, CSR_SCAUSE
+  # csrc指令会将原先SSTATUS值存到t0
   sd  t0, OFFSET_REG_SSTATUS(sp)
   sd  t1, OFFSET_REG_SEPC(sp)
   sd  t2, OFFSET_REG_SBADADDR(sp)
   sd  t3, OFFSET_REG_SCAUSE(sp)
+
+  addi sp, sp, -SWITCH_TO_SIZE
 .endm
 
 .macro RESTORE_CONTEXT
   /* TODO: Restore all general purpose registers and sepc, sstatus */
   /* HINT: Pay attention to sp again! */
   # 需要保证tp指向当前要恢复上下文的进程
+  # 从do_scheduler过来时，switch_to 保证了tp=a1
   ld sp, PCB_KERNEL_SP(tp)
   addi sp, sp, SWITCH_TO_SIZE
   # 先恢复需要用到中间寄存器的
   ld  t0, OFFSET_REG_SEPC(sp)
   ld  t1, OFFSET_REG_SSTATUS(sp)
-  csrw sepc, t0
-  csrw sstatus, t1
+  csrw CSR_SEPC, t0
+  csrw CSR_SSTATUS, t1
   # 查看zero和tp是否需要
-  ld  zero, OFFSET_REG_ZERO(sp)
+  #ld  zero, OFFSET_REG_ZERO(sp)
   ld  ra,   OFFSET_REG_RA(sp)
-  ld  sp,   OFFSET_REG_SP(sp)
+  #ld  sp,   OFFSET_REG_SP(sp)
   ld  gp,   OFFSET_REG_GP(sp)
   ld  tp,   OFFSET_REG_TP(sp)
   ld  t0,   OFFSET_REG_T0(sp)
@@ -110,8 +116,9 @@
   ld  t4,   OFFSET_REG_T4(sp)
   ld  t5,   OFFSET_REG_T5(sp)
   ld  t6,   OFFSET_REG_T6(sp)
-
-  # 回归用户栈
+  
+  ld  sp,   OFFSET_REG_SP(sp)
+  # 回归用户栈,上下行等效
   ld  sp,   PCB_USER_SP(tp)
 .endm
 
@@ -230,7 +237,7 @@ ENTRY(exception_handler_entry)
   /* TODO: [p2-task3] load ret_from_exception into $ra so that we can return to
    * ret_from_exception when interrupt_help complete.
    */
-  la  ra, ret_from_exception
+  
 
   /* TODO: [p2-task3] call interrupt_helper
    * NOTE: donnot forget to pass parameters for it.
@@ -238,9 +245,10 @@ ENTRY(exception_handler_entry)
   # void interrupt_helper(regs_context_t *regs, uint64_t stval, uint64_t scause)
   ld  a0, PCB_KERNEL_SP(tp)
   addi  a0, a0, SWITCH_TO_SIZE
-  csrr a1, stval
-  csrr a2, scause
+  csrr a1, CSR_STVAL
+  csrr a2, CSR_SCAUSE
   call interrupt_helper
-
-  ret
+  
+  la  ra, ret_from_exception
+  jr ra
 ENDPROC(exception_handler_entry)
