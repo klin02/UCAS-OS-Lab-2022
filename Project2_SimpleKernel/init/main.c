@@ -211,6 +211,7 @@ int main(void)
 
     // Read CPU frequency (｡•ᴗ-)_
     time_base = bios_read_fdt(TIMEBASE);
+    printk("timebase %ld\n",time_base);
 
     // Init lock mechanism o(´^｀)o
     init_locks();
@@ -230,17 +231,19 @@ int main(void)
 
     // TODO: [p2-task4] Setup timer interrupt and enable all interrupt globally
     // NOTE: The function of sstatus.sie is different from sie's
-
+    //在此设置第一个定时器中断，以激发第一次调度
+    set_timer(get_ticks()+time_base/100);
+    do_scheduler();
 
     // Infinite while loop, where CPU stays in a low-power state (QAQQQQQQQQQQQ)
     while (1)
     {
         // If you do non-preemptive scheduling, it's used to surrender control
-        do_scheduler();
+        // do_scheduler();
 
         // If you do preemptive scheduling, they're used to enable CSR_SIE and wfi
-        // enable_preempt();
-        // asm volatile("wfi");
+        enable_preempt();
+        asm volatile("wfi");
     }
 
     return 0;

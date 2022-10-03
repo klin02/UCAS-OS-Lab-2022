@@ -37,7 +37,7 @@ pid_t process_id = 1;
 void do_scheduler(void)
 {
     // TODO: [p2-task3] Check sleep queue to wake up PCBs
-    check_sleeping();
+    //check_sleeping();
     //printl("begin schedule\n");
     // TODO: [p2-task1] Modify the current_running pointer.
     //将cur加入ready queue。同时从中拿出next

@@ -30,6 +30,10 @@ void handle_irq_timer(regs_context_t *regs, uint64_t stval, uint64_t scause)
 {
     // TODO: [p2-task4] clock interrupt handler.
     // Note: use bios_set_timer to reset the timer and remember to reschedule
+    check_sleeping();
+    //to let it run in pynq, the divisor should be less than 20000
+    set_timer(get_ticks()+time_base/20000);
+    do_scheduler();
 }
 
 void init_exception()
@@ -42,7 +46,9 @@ void init_exception()
     exc_table[EXCC_SYSCALL] = &handle_syscall;
     /* TODO: [p2-task4] initialize irq_table */
     /* NOTE: handle_int, handle_other, etc.*/
-
+    for(int i=0;i<IRQC_COUNT;i++)
+        irq_table[i] = &handle_other;
+    irq_table[IRQC_S_TIMER] = &handle_irq_timer;
     /* TODO: [p2-task3] set up the entrypoint of exceptions */
     //调用汇编函数setup_exception 完成相关操作
     setup_exception();

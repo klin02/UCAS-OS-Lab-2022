@@ -15,7 +15,7 @@
 
 
 ## More detail
-+ debug过程可见[实验过程文档.md](实验过程文档.md)Part1部分
++ debug过程可见[part1_实验过程文档.md](part1_实验过程文档.md)
 + 问题解答详情可见[part1_design_review.md](part1_design_review.md)
   + switch_to上下文切换方法
   + PCB及内核栈初始化
