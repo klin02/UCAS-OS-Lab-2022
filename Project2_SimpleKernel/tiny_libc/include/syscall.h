@@ -11,5 +11,6 @@
 #define SYSCALL_LOCK_INIT 40
 #define SYSCALL_LOCK_ACQ 41
 #define SYSCALL_LOCK_RELEASE 42
-
+//取0-63中未被使用过的数，保持和arch/riscv/asm/unistd.h一致
+#define SYSCALL_THREAD_CREATE 60
 #endif

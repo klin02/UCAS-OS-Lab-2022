@@ -76,6 +76,8 @@ typedef struct pcb
     /* process id */
     pid_t pid;
 
+    //thread id
+    pid_t tid;
     /* BLOCK | READY | RUNNING */
     task_status_t status;
 

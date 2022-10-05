@@ -42,15 +42,16 @@
 #include <assert.h>
 #include <type.h>
 #include <csr.h>
+#include <os/thread.h>
 
 // 注意该地址应当与bootblock同步改变
 #define USER_INFO_ADDR 0x52400000
 
 //规定测试任务启动顺序
-#define TASK_LIST_LEN 8
-char task_name_list [16][10] = {"print1","print2","fly","lock1","lock2","mylock","sleep","timer"};
-// #define TASK_LIST_LEN 1
-// char task_name_list [16][10] = {"print1"};
+#define TASK_LIST_LEN 9
+char task_name_list [16][10] = {"print1","print2","fly","lock1","lock2","mylock","sleep","timer","mythread"};
+// #define TASK_LIST_LEN 2
+// char task_name_list [16][10] = {"print1","mythread"};
 //以下均已在sched.c/sched.h声明
 // /* current running task PCB */
 // extern pcb_t * volatile current_running;
@@ -157,6 +158,8 @@ static void init_pcb(void)
             }
         }
         pcb[process_id].pid=process_id;     //完成初始化后加1
+        //初始化主线程tid为-1
+        pcb[process_id].tid=-1;
         pcb[process_id].wakeup_time = 0;
         pcb[process_id].kernel_sp = allocKernelPage(1)+PAGE_SIZE;   //alloc返回的是栈底，需要先移动到栈顶再填数据
         pcb[process_id].user_sp = allocUserPage(1)+PAGE_SIZE;
@@ -189,6 +192,7 @@ static void init_syscall(void)
     syscall[SYSCALL_LOCK_INIT]      = (long(*)())do_mutex_lock_init;
     syscall[SYSCALL_LOCK_ACQ]       = (long(*)())do_mutex_lock_acquire;
     syscall[SYSCALL_LOCK_RELEASE]   = (long(*)())do_mutex_lock_release;
+    syscall[SYSCALL_THREAD_CREATE]  = (long(*)())thread_create;
 }
 
 int main(void)
@@ -231,9 +235,6 @@ int main(void)
 
     // TODO: [p2-task4] Setup timer interrupt and enable all interrupt globally
     // NOTE: The function of sstatus.sie is different from sie's
-    //在此设置第一个定时器中断，以激发第一次调度
-    set_timer(get_ticks()+time_base/100);
-    do_scheduler();
 
     // Infinite while loop, where CPU stays in a low-power state (QAQQQQQQQQQQQ)
     while (1)
@@ -243,6 +244,10 @@ int main(void)
 
         // If you do preemptive scheduling, they're used to enable CSR_SIE and wfi
         enable_preempt();
+        //在此设置第一个定时器中断，以激发第一次调度
+        set_timer(get_ticks()+time_base/100);
+        do_scheduler();
+
         asm volatile("wfi");
     }
 

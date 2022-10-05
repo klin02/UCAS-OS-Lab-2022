@@ -103,3 +103,9 @@ void sys_sleep(uint32_t time)
     /* TODO: [p2-task3] call invoke_syscall to implement sys_sleep */
     invoke_syscall(SYSCALL_SLEEP,(long)time,IGNORE,IGNORE,IGNORE,IGNORE);
 }
+
+//TASK5: create thread
+void sys_thread_create(void *func,void *arg)
+{
+    invoke_syscall(SYSCALL_THREAD_CREATE,(long)func,(long)arg,IGNORE,IGNORE,IGNORE);
+}
