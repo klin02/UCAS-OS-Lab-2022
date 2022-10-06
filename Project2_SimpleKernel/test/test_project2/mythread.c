@@ -25,12 +25,15 @@ void *calc_sum(void *arg){
         }
         td_flag[tid]=1; //标记该线程工作完成
         //设置死循环以避免内存回收
-        while(1){
+        // while(1){
+        //         sys_move_cursor(0,child_print_location);
+        //         printf("> [Thread] Child Thread %d is done!                            ",tid);
+        //         //asm volatile("wfi");
+        //         //sys_yield();
+        // }
                 sys_move_cursor(0,child_print_location);
                 printf("> [Thread] Child Thread %d is done!                            ",tid);
-                //asm volatile("wfi");
-                //sys_yield();
-        }
+        sys_thread_recycle();
 }
 int main(void){
         sys_move_cursor(0, print_location);

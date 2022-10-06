@@ -56,3 +56,22 @@ void thread_create(ptr_t funcaddr,void *arg){ // void *就是函数地址
         enqueue(&ready_queue,&tcb[thread_ptr]);
         thread_ptr++;
 }
+
+void thread_recycle(){
+        //无需传参，主要参数可利用current_running传递
+        //功能：对应用户栈和内核栈取消占用标记，当前任务销毁，调度
+        int Kernel_page_num = (current_running->kernel_sp - FREEMEM_KERNEL) / PAGE_SIZE;
+        int User_page_num = (current_running->user_sp - FREEMEM_USER) / PAGE_SIZE;
+        freeKernelPage(Kernel_page_num);
+        freeUserPage(User_page_num);
+
+        //改写自do_scheduler
+        pcb_t * next_running;
+        next_running = dequeue(&ready_queue);
+        pcb_t * last_running;
+        last_running = current_running;
+        next_running->status = TASK_RUNNING;
+        current_running = next_running;
+        // TODO: [p2-task1] switch_to current_running
+        switch_to(last_running,current_running);
+}

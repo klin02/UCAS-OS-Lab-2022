@@ -109,3 +109,8 @@ void sys_thread_create(void *func,void *arg)
 {
     invoke_syscall(SYSCALL_THREAD_CREATE,(long)func,(long)arg,IGNORE,IGNORE,IGNORE);
 }
+
+//Additional func: recycle thread
+void sys_thread_recycle(){
+    invoke_syscall(SYSCALL_THREAD_RECYCLE,IGNORE,IGNORE,IGNORE,IGNORE,IGNORE);
+}

@@ -13,4 +13,5 @@
 #define SYSCALL_LOCK_RELEASE 42
 //取0-63中未被使用过的数,保持和tiny_libc/include/syscall.h一致
 #define SYSCALL_THREAD_CREATE 60
+#define SYSCALL_THREAD_RECYCLE 61
 #endif

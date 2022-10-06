@@ -193,10 +193,14 @@ static void init_syscall(void)
     syscall[SYSCALL_LOCK_ACQ]       = (long(*)())do_mutex_lock_acquire;
     syscall[SYSCALL_LOCK_RELEASE]   = (long(*)())do_mutex_lock_release;
     syscall[SYSCALL_THREAD_CREATE]  = (long(*)())thread_create;
+    syscall[SYSCALL_THREAD_RECYCLE] = (long(*)())thread_recycle;
 }
 
 int main(void)
 {
+    // 新增：初始化可回收内存分配机制
+    init_mm();
+    
     // Init jump table provided by kernel and bios(ΦωΦ)
     init_jmptab();
 
