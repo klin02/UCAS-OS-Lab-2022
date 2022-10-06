@@ -9,7 +9,7 @@
 
 //不调用csr.h库，新增宏定义
 #define SCAUSE_IRQ_FLAG   (1UL << 63)
-
+#define TIME_INTERVAL (time_base/20000)
 handler_t irq_table[IRQC_COUNT];
 handler_t exc_table[EXCC_COUNT];
 
@@ -32,7 +32,7 @@ void handle_irq_timer(regs_context_t *regs, uint64_t stval, uint64_t scause)
     // Note: use bios_set_timer to reset the timer and remember to reschedule
     check_sleeping();
     //to let it run in pynq, the divisor should be less than 20000
-    set_timer(get_ticks()+time_base/20000);
+    set_timer(get_ticks()+TIME_INTERVAL);
     do_scheduler();
 }
 
