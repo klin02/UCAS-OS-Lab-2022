@@ -19,8 +19,8 @@
 
 #define NUM_MAX_THREAD 10
 extern void ret_from_exception();
-pcb_t tcb[NUM_MAX_THREAD]; //全局变量，防止局部变量被丢弃
-pid_t thread_ptr = 0;
+// pcb_t tcb[NUM_MAX_THREAD]; //全局变量，防止局部变量被丢弃
+// pid_t thread_ptr = 0;
 // void thread_create(ptr_t funcaddr,void *arg){ // void *就是函数地址
 //         int tid = *(int *)arg;
 //         tcb[thread_ptr].pid = current_running->pid; //与主线程一致
@@ -57,10 +57,27 @@ pid_t thread_ptr = 0;
 //         thread_ptr++;
 // }
 
+pcb_t tcb[NUM_MAX_THREAD]; //全局变量，防止局部变量被丢弃
+int tcb_flag[NUM_MAX_THREAD]={0}; //用于回收，标记tcb是否被占用
 void thread_create(ptr_t funcaddr,void *arg,ptr_t rc_funcaddr){ // void *就是函数地址
         int tid = *(int *)arg;
+        int thread_ptr; //对应标号
+        int find=0;
+        for(int i=0;i<NUM_MAX_THREAD;i++){
+                if(tcb_flag[i]==0){
+                        tcb_flag[i]=1;
+                        find=1;
+                        thread_ptr = i;
+                        break;
+                }
+        }
+        if(find==0){
+                assert(0);
+        }
+        
         tcb[thread_ptr].pid = current_running->pid; //与主线程一致
         tcb[thread_ptr].tid = tid;
+        tcb[thread_ptr].tcb_num = thread_ptr;
         tcb[thread_ptr].wakeup_time = 0;
         tcb[thread_ptr].kernel_sp = allocKernelPage(1)+PAGE_SIZE;
         tcb[thread_ptr].user_sp = allocUserPage(1)+PAGE_SIZE;
@@ -92,17 +109,18 @@ void thread_create(ptr_t funcaddr,void *arg,ptr_t rc_funcaddr){ // void *就是�
         pt_switchto->regs[1] = tcb[thread_ptr].kernel_sp;
 
         enqueue(&ready_queue,&tcb[thread_ptr]);
-        thread_ptr++;
 }
 
 void thread_recycle(){
         //无需传参，主要参数可利用current_running传递
-        //功能：对应用户栈和内核栈取消占用标记，当前任务销毁，调度
+        //功能：对应用户栈和内核栈取消占用标记，tcb块取消占用标记，调度
+        //回收内存
         int Kernel_page_num = (current_running->kernel_sp - FREEMEM_KERNEL) / PAGE_SIZE;
         int User_page_num = (current_running->user_sp - FREEMEM_USER) / PAGE_SIZE;
         freeKernelPage(Kernel_page_num);
         freeUserPage(User_page_num);
-
+        //回收tcb块
+        tcb_flag[current_running->tcb_num] == 0;
         //改写自do_scheduler
         pcb_t * next_running;
         next_running = dequeue(&ready_queue);

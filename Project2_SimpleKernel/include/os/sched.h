@@ -78,6 +78,9 @@ typedef struct pcb
 
     //thread id
     pid_t tid;
+    //标记占用的tcb块，以便进行回收
+    int tcb_num;
+    
     /* BLOCK | READY | RUNNING */
     task_status_t status;
 
