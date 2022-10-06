@@ -105,12 +105,17 @@ void sys_sleep(uint32_t time)
 }
 
 //TASK5: create thread
-void sys_thread_create(void *func,void *arg)
-{
-    invoke_syscall(SYSCALL_THREAD_CREATE,(long)func,(long)arg,IGNORE,IGNORE,IGNORE);
-}
+// void sys_thread_create(void *func,void *arg)
+// {
+//     invoke_syscall(SYSCALL_THREAD_CREATE,(long)func,(long)arg,IGNORE,IGNORE,IGNORE);
+// }
 
 //Additional func: recycle thread
+void sys_thread_create(void *func,void *arg,void *rc_func) //回收函数地址
+{
+    invoke_syscall(SYSCALL_THREAD_CREATE,(long)func,(long)arg,(long)rc_func,IGNORE,IGNORE);
+}
+
 void sys_thread_recycle(){
     invoke_syscall(SYSCALL_THREAD_RECYCLE,IGNORE,IGNORE,IGNORE,IGNORE,IGNORE);
 }

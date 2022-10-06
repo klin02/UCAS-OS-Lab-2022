@@ -18,4 +18,8 @@ long sys_get_tick(void);
 void sys_mutex_init(int key);
 void sys_mutex_acquire(void);
 void sys_mutex_release(void);
+
+//void sys_thread_create(void *func,void *arg);
+void sys_thread_create(void *func,void *arg,void *rc_func);
+void sys_thread_recycle();
 #endif

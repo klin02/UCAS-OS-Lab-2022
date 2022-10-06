@@ -33,7 +33,7 @@ void *calc_sum(void *arg){
         // }
                 sys_move_cursor(0,child_print_location);
                 printf("> [Thread] Child Thread %d is done!                            ",tid);
-        sys_thread_recycle();
+        //sys_thread_recycle();
 }
 int main(void){
         sys_move_cursor(0, print_location);
@@ -48,7 +48,8 @@ int main(void){
         printf("> [TASK] Main Thread is creating               ");
         //sys_yield();
         for(int i=0;i<TD_NUM;i++){
-                sys_thread_create(calc_sum,&td_id[i]);
+                //sys_thread_create(calc_sum,&td_id[i]);
+                sys_thread_create(calc_sum,&td_id[i],&sys_thread_recycle);
         }
         
         sys_move_cursor(0, print_location);
