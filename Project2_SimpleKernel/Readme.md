@@ -1,20 +1,23 @@
 # Project2_SimpleKernel
+
 ## Part1
+
 ### Completion of Task
+
 + Task 1-2 均已完成，且通过上板测试。
-+ 实现进程切换调度和互斥锁锁的阻塞与释放
++ 实现进程切换调度和互斥锁的阻塞与释放
 + 使用跳转表形式实现用户程序对内核程序的调用
 + 实现多锁机制，支持自行设置映射机制，使得用户程序能申请多把锁
 + PCB增加`lock_time`结构，锁释放时新增ROB（Re-order Buffer）逻辑，支持锁的公平分配，防止进程饥饿现象
 
 
 ## Running Tips
-+ 在运行`loadboot`指令后选择调用模式
-+ 可修改`./build`文件夹中的`bat1.txt`以通过id批处理调用用户程序
-+ 可修改`./build`文件夹中的`bat2.txt`以通过name批处理调用用户程序
+
++ 输入`loadboot`即可自动运行
 
 
 ## More detail
+
 + debug过程可见[part1_实验过程文档.md](part1_实验过程文档.md)
 + 问题解答详情可见[part1_design_review.md](part1_design_review.md)
   + switch_to上下文切换方法
