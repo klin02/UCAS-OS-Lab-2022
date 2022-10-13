@@ -52,7 +52,7 @@ header: Prj2_SimpleKernel Part 2&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
 
 ---
 
-![bg 82%](prj2.png)
+![bg 82%](Attachment/prj2.png)
 
 ---
 ### 调用流程
