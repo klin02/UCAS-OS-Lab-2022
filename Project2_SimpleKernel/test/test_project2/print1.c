@@ -21,7 +21,6 @@
 int main(void)
 {
     int print_location = 0;
-
     for (int i = 0;; i++)
     {
         sys_move_cursor(0, print_location);
