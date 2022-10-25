@@ -24,11 +24,12 @@ void bzero(void *dest, uint32_t len)
 int strlen(const char *src)
 {
     int i = 0;
-    while (src[i++] != '\0') {
-        ;
+    while (src[i] != '\0') {
+        i++;
     }
     return i;
 }
+
 
 int strcmp(const char *str1, const char *str2)
 {
