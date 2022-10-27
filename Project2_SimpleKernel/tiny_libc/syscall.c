@@ -70,9 +70,9 @@ void sys_reflush(void)
 // }
 
 //多锁机制下，上述三个函数有所改动
-void sys_mutex_init(void)
+void sys_mutex_init(int key)
 {
-    invoke_syscall(SYSCALL_LOCK_INIT,IGNORE,IGNORE,IGNORE,IGNORE,IGNORE);
+    invoke_syscall(SYSCALL_LOCK_INIT,(long)key,IGNORE,IGNORE,IGNORE,IGNORE);
 }
 
 void sys_mutex_acquire(void)
