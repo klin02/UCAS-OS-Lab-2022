@@ -30,6 +30,7 @@
 
 #include <type.h>
 
+//#define TIMER_INTERVAL 300000
 #define TIMER_INTERVAL 150000
 //#define TIMER_INTERVAL 10000
 

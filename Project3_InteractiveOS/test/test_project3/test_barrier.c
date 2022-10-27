@@ -27,6 +27,7 @@ int main(int argc, char *argv[])
                i, sleep_time);
 
         sys_sleep(sleep_time);
+        printf("sleep end");
     }
 
     return 0;

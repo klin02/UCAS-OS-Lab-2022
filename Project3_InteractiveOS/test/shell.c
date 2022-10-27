@@ -177,6 +177,7 @@ void parse(){
 void ps() { sys_ps(); }
 pid_t exec(){
     pid_t pid;
+    //printf("%s %d\n",argv[0],argc);
     if(isbackground==1){
         pid = sys_exec(argv[0],argc,argv);
         if(pid==0)
@@ -188,11 +189,12 @@ pid_t exec(){
     else
     {
         // printf("!!no back\n");
-        pid_t pid = sys_exec(argv[0],argc,argv);
+        pid = sys_exec(argv[0],argc,argv);
         if(pid==0)
             printf("Error: %s: no such file\n",argv[0]);
         else 
             sys_waitpid(pid);
+        printf("wait done\n");
         return pid;
     }
     // while(1) 

@@ -89,13 +89,13 @@ void thread_create(ptr_t funcaddr,void *arg,ptr_t rc_funcaddr){ // void *就是�
         for(int i=0;i<32;i++)
                 pt_regs->regs[i]=0;
         //设置用户栈
-        pt_regs->regs[2] = tcb[thread_ptr].user_sp;
+        pt_regs->regs[2] =  (reg_t)tcb[thread_ptr].user_sp;
         pt_regs->regs[4] = (reg_t)&tcb[thread_ptr];
         //设置跳转地址和传参
         pt_regs->sepc = funcaddr; // 返回到对应函数的入口
-        pt_regs->regs[10] = arg; //a0 传参，注意，需要和sys_thread_create函数相统一，仍是地址
+        pt_regs->regs[10] = (reg_t)arg; //a0 传参，注意，需要和sys_thread_create函数相统一，仍是地址
         //设置ra，使线程结束时返回回收函数
-        pt_regs->regs[1] = rc_funcaddr;
+        pt_regs->regs[1] =  (reg_t)rc_funcaddr;
         //设置用户态
         pt_regs->sstatus = SR_SPIE & ~SR_SPP;
         pt_regs->sbadaddr = 0;

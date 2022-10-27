@@ -259,6 +259,9 @@ static void init_syscall(void)
     syscall[SYSCALL_KILL]           = (long(*)())do_kill;
     syscall[SYSCALL_WAITPID]        = (long(*)())do_waitpid;
     syscall[SYSCALL_GETPID]         = (long(*)())do_getpid;
+    syscall[SYSCALL_BARR_INIT]      = (long(*)())do_barrier_init;
+    syscall[SYSCALL_BARR_WAIT]      = (long(*)())do_barrier_wait;
+    syscall[SYSCALL_BARR_DESTROY]   = (long(*)())do_barrier_destroy;
 }
 
 int main(void)
@@ -288,6 +291,10 @@ int main(void)
     init_locks();
     printk("> [INIT] Lock mechanism initialization succeeded.\n");
 
+    // 初始化同步屏障
+    init_barriers();
+    printk("> [INIT] Barriers initialization succeeded.\n");
+
     // Init interrupt (^_^)
     init_exception();
     printk("> [INIT] Interrupt processing initialization succeeded.\n");
@@ -310,7 +317,7 @@ int main(void)
         // do_scheduler();
 
         // If you do preemptive scheduling, they're used to enable CSR_SIE and wfi
-        //enable_preempt();
+        enable_preempt();
         //在此设置第一个定时器中断，以激发第一次调度
         set_timer(get_ticks()+TIMER_INTERVAL);
         do_scheduler();

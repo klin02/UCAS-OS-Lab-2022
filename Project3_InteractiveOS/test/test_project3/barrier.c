@@ -31,13 +31,13 @@ int main(int argc, char *argv[])
         pids[i] = sys_exec(argv[0], 3, argv);
 
     }
-
+    //while(1);
     // Wait child processes to exit
     for (int i = 0; i < NUM_TB; ++i)
     {
         sys_waitpid(pids[i]);
     }
-
+    printf("wait done;");
     // Destroy barrier
     sys_barrier_destroy(handle);
 

@@ -52,12 +52,12 @@ typedef struct mutex_lock
 
 extern mutex_lock_t mlocks[LOCK_NUM];
 
-//新增结构，支持多把锁
-typedef struct lk_arr{
-    int lock_hit[LOCK_NUM];
-} lock_array;
+// //新增结构，支持多把锁
+// typedef struct lk_arr{
+//     int lock_hit[LOCK_NUM];
+// } lock_array;
 
-lock_array lock_map[TASK_MAXNUM]; //对应不同pid的命中锁状态
+// lock_array lock_map[TASK_MAXNUM]; //对应不同pid的命中锁状态
 
 void init_locks(void);
 
@@ -76,9 +76,14 @@ void do_mutex_lock_release(int mlock_idx);
 typedef struct barrier
 {
     // TODO [P3-TASK2 barrier]
+    int total_num;
+    int wait_num;
+    list_head wait_queue;
+    int used; 
 } barrier_t;
 
 #define BARRIER_NUM 16
+extern barrier_t    barr[BARRIER_NUM];
 
 void init_barriers(void);
 int do_barrier_init(int key, int goal);
