@@ -44,19 +44,27 @@ void check_sleeping(void)
 {
     // TODO: [p2-task3] Pick out tasks that should wake up from the sleep queue
     // 由于可能再次入队，取当前队头做标记
+    //!! 使用队头标记法保证遍历的条件是，队头再入队。如果队头不入队，第二个重复入队，则陷入死循环。
+    //因此，当队头出队时，需要更改头。
     list_node_t * head; //队头标记 
     list_node_t * tmp;
     pcb_t * tmppcb;
-    head = sleep_queue.prev;
     int isfirst=1;
+    int changehead = 1;
     uint64_t cur_time = get_timer();
     while(1){
         tmp = sleep_queue.prev;
+        if(changehead==1){
+            head=tmp;
+            changehead=0;
+        }
         if(tmp==NULL || (tmp==head && isfirst==0))
             break;
         isfirst=0;
         tmppcb = list_entry(tmp,pcb_t,list);
         if(tmppcb->wakeup_time <= cur_time){
+            if(tmp==head)
+                changehead=1;
             dequeue(&sleep_queue);
             do_unblock(&(tmppcb->list)); //需要改变状态再入队
         }

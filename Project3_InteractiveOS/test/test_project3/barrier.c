@@ -33,11 +33,27 @@ int main(int argc, char *argv[])
     }
     //while(1);
     // Wait child processes to exit
+    //printf("                                     pidlist : %d %d %d",pids[0],pids[1],pids[2]);
+    // printf("\n\n\n");
+    // sys_ps();
+    // int cnt=0;
+    // while(1){
+    //     for(int i=0;i<1000000;i++)
+    //     ;
+    //     // sys_yield();
+    //     sys_move_cursor(0,29);
+    //     printf("bar %d\n",cnt++);
+    //     sys_ps();
+    //     // sys_move_cursor(0,28);
+    //     // printf("pid %d",2);
+    //     //asm volatile("wfi");
+    // }
+
+    //while(1) ;
     for (int i = 0; i < NUM_TB; ++i)
     {
         sys_waitpid(pids[i]);
     }
-    printf("wait done;");
     // Destroy barrier
     sys_barrier_destroy(handle);
 

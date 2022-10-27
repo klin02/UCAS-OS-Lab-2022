@@ -73,7 +73,12 @@ int main(void)
         strptr=0;
         printf("> root@UCAS_OS: ");
         while(1){
-            while((ch = sys_getchar())==-1);    //loop until getting a char
+            while((ch = sys_getchar())==-1) //;
+            {
+                // for(int j=0;j<1000000;j++)
+                // ;
+            }
+                //loop until getting a char
             if(ch == '\r'){
                 strbuf[strptr++]= '\0';
                 printf("\n");
@@ -194,7 +199,7 @@ pid_t exec(){
             printf("Error: %s: no such file\n",argv[0]);
         else 
             sys_waitpid(pid);
-        printf("wait done\n");
+        //printf("wait done\n");
         return pid;
     }
     // while(1) 

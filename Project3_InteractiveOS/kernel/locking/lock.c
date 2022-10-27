@@ -3,6 +3,8 @@
 #include <os/list.h>
 #include <os/string.h>
 #include <atomic.h>
+#include <printk.h>
+
 
 mutex_lock_t mlocks[LOCK_NUM];
 barrier_t    barr[BARRIER_NUM];
@@ -113,6 +115,8 @@ int do_barrier_init(int key, int goal){
         //相关量均已在destroy时重置
         barr[bar_idx].total_num = goal;
         barr[bar_idx].used = 1;
+        barr[bar_idx].wait_num =0;
+        list_init(&barr[bar_idx].wait_queue);
         // printk("init: %d %d %d \n",barr[bar_idx].total_num,barr[bar_idx].wait_num,bar_idx);
         // while(1) ;
         if(barr[bar_idx].wait_num != 0) printk("Err1: barr is not empty\n");
@@ -127,12 +131,12 @@ void do_barrier_wait(int bar_idx){
     else{
         // printk("Info: %d %d %d\n",barr[bar_idx].wait_num,barr[bar_idx].total_num,bar_idx);
         // int bef = barr[bar_idx].wait_num;
-        if(barr[bar_idx].wait_num ==0){
-            if(barr[bar_idx].wait_queue.prev == NULL && barr[bar_idx].wait_queue.next == NULL)
-            ;
-            else 
-                printk("ERR: list is not empty\n");
-        }
+        // if(barr[bar_idx].wait_num ==0){
+        //     if(barr[bar_idx].wait_queue.prev == NULL && barr[bar_idx].wait_queue.next == NULL)
+        //     ;
+        //     else 
+        //         printk("ERR: list is not empty\n");
+        // }
         barr[bar_idx].wait_num ++;
         if(barr[bar_idx].wait_num == barr[bar_idx].total_num){
             //barr[bar_idx].wait_num--; //最新的不入
@@ -140,13 +144,20 @@ void do_barrier_wait(int bar_idx){
                 pcb_t * tmp = list_entry(barr[bar_idx].wait_queue.prev,pcb_t,list);
                 dequeue(&(barr[bar_idx].wait_queue));
                 do_unblock(&(tmp->list)); //改变状态及入队列
-                barr[bar_idx].wait_num--;
+                //barr[bar_idx].wait_num--;
             }
             //if(barr[bar_idx].wait_num != 0) printk("Err2: barr is not empty %d %d %d %d!!\n",barr[bar_idx].wait_num,barr[bar_idx].total_num,bef,bar_idx);
             barr[bar_idx].wait_num=0;
+            list_init(&barr[bar_idx].wait_queue);
+            do_scheduler();
         }
         else{
+            //printk("                    block");
             do_block(&(current_running->list),&(barr[bar_idx].wait_queue));
+            if(current_running->status != TASK_BLOCKED)
+                printk(" st block!");
+            printk("\n\n\n\n");
+            //do_process_show();
             do_scheduler();
         }
     }

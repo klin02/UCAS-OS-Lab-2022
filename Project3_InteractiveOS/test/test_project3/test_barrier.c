@@ -12,10 +12,13 @@ int main(int argc, char *argv[])
 
     // Set random seed
     srand(clock());
-
+    //sys_move_cursor(0, print_location);
+    //printf("                                                     handle %d",handle);
     // Enter and exit target barrier
     for (int i = 0; i < 10; ++i)
     {
+        // sys_move_cursor(0, print_location);
+        // printf("round start");
         int sleep_time = rand() % 3 + 1;
         sys_move_cursor(0, print_location);
         printf("> [TASK] Ready to enter the barrier.(%d) ", i);
@@ -27,7 +30,6 @@ int main(int argc, char *argv[])
                i, sleep_time);
 
         sys_sleep(sleep_time);
-        printf("sleep end");
     }
 
     return 0;

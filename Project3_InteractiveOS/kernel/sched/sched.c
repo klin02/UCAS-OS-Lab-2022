@@ -55,8 +55,15 @@ void do_scheduler(void)
         next_running = dequeue(&ready_queue);
     }
     //就绪队列为空时，返回空，next需要指向自己
-    if(next_running == NULL)     
-        next_running = current_running;
+    if(next_running == NULL) {
+        if(current_running->status != TASK_RUNNING){
+            printk("!!Err: Cur is no running");
+            while(1); //stop here
+        }
+        switch_to(current_running,current_running);
+        return;
+    }    
+        
     pcb_t * last_running;
     last_running = current_running;
 
@@ -68,7 +75,7 @@ void do_scheduler(void)
     next_running->status = TASK_RUNNING;
     current_running = next_running;
     // TODO: [p2-task1] switch_to current_running
-    set_timer(get_ticks()+TIMER_INTERVAL);
+    //set_timer(get_ticks()+10000);
     switch_to(last_running,current_running);
 }
 
@@ -196,15 +203,17 @@ int do_kill(pid_t pid){
         return 0;
 }
 int do_waitpid(pid_t pid){
+    //printk("now %d\n",pcb_flag[pid-1]);
     if(pcb_flag[pid-1] == 1){
         do_block(&(current_running->list),&(pcb[pid-1].wait_queue));
-        if(current_running->status == TASK_BLOCKED) return pid;
+        //if(current_running->status == TASK_BLOCKED) return pid;
         do_scheduler();
         return pid;
     }
+    //return pid;
     else
     {
-        printk("err\n");
+        //printk("err\n");
         return 0;
     }
 }
