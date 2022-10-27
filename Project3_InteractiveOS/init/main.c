@@ -47,11 +47,14 @@
 // 注意该地址应当与bootblock同步改变
 #define USER_INFO_ADDR 0x52400000
 
+#define ARGV_OFFSET 64
+#define ARG_SIZE    128
+
 //规定测试任务启动顺序
-#define TASK_LIST_LEN 9
-char task_name_list [16][10] = {"print1","print2","fly","lock1","lock2","mylock","sleep","timer","mythread"};
-// #define TASK_LIST_LEN 2
-// char task_name_list [16][10] = {"print1","mythread"};
+#define TASK_LIST_LEN 1
+char task_name_list[TASK_LIST_LEN][10] = {"shell"};
+char * shellptr = "shell";
+
 //以下均已在sched.c/sched.h声明
 // /* current running task PCB */
 // extern pcb_t * volatile current_running;
@@ -103,9 +106,9 @@ static void init_task_info(void)
 }
 
 
-static void init_pcb_stack(
+void init_pcb_stack(
     ptr_t kernel_stack, ptr_t user_stack, ptr_t entry_point,
-    pcb_t *pcb)//当前kernel_stack仍处于栈顶，应当将pcb的该变量修改至switchto头部，从而使得swtch中可以直接切换
+    pcb_t *pcb,int argc, char **argv_base,ptr_t rc_addr)//当前kernel_stack仍处于栈顶，应当将pcb的该变量修改至switchto头部，从而使得swtch中可以直接切换
 {
      /* TODO: [p2-task3] initialization of registers on kernel stack
       * HINT: sp, ra, sepc, sstatus
@@ -118,10 +121,11 @@ static void init_pcb_stack(
     for(int i=0;i<32;i++)
         pt_regs->regs[i]=0;
     //详细布局见regs.h
-    //pt_regs->regs[1] = entry_point;
+    pt_regs->regs[1] = (reg_t)rc_addr;
     pt_regs->regs[2] = user_stack; //此处为用户栈
     pt_regs->regs[4] = (reg_t)pcb; //tp指向自身，保证恢复上下文不变 未恢复tp
-
+    pt_regs->regs[10] = (reg_t)argc; //a0
+    pt_regs->regs[11] = (reg_t)argv_base; //a1
     //do scheduler的switch将返回ret from exception 其中将会恢复上下文并sret，这里返回函数入口
     pt_regs->sepc = entry_point;
     //根据讲义，需要初始化SPP(0)和SPIE(1)，分别表示之前特权级和使能状态
@@ -140,41 +144,93 @@ static void init_pcb_stack(
     pcb->kernel_sp = kernel_stack - sizeof(regs_context_t) - sizeof(switchto_context_t);
     pt_switchto->regs[0] = (reg_t)&ret_from_exception; //ra 函数需要取地址
     pt_switchto->regs[1] = pcb->kernel_sp; //sp
+    // if(argc == 4){
+    //     printk("stk: %d %x\n",pt_regs->regs[10],pt_regs->regs[11]);
+    // }
 }
 
-static void init_pcb(void)
+pid_t init_pcb(char *name, int argc, char *argv[],ptr_t rc_addr)
 {
     /* TODO: [p2-task1] load needed tasks and init their corresponding PCB */
+    int isshell=0;
+    if(strcmp(name,shellptr)==0)
+        isshell=1;
+
+    if(isshell==1){
     //初始化ready queue
     list_init(&ready_queue);
     //part2:初始化sleep queue
-    list_init(&sleep_queue);
-    int task_id;
-    for(int i=0;i<TASK_LIST_LEN;i++){
-        for(int j=0;j<tasknum;j++){
-            if(strcmp(tasks[j].name,task_name_list[i])==0){
-                task_id = j;
-                break;
-            }
-        }
-        pcb[process_id].pid=process_id;     //完成初始化后加1
-        //初始化主线程tid为-1
-        pcb[process_id].tid=-1;
-        pcb[process_id].wakeup_time = 0;
-        pcb[process_id].kernel_sp = allocKernelPage(1)+PAGE_SIZE;   //alloc返回的是栈底，需要先移动到栈顶再填数据
-        pcb[process_id].user_sp = allocUserPage(1)+PAGE_SIZE;
-        //注意task.entry只是镜像中偏移，实际计算需要通过taskid
-        ptr_t task_entrypoint = TASK_MEM_BASE + task_id*TASK_SIZE;
-        init_pcb_stack(pcb[process_id].kernel_sp,pcb[process_id].user_sp,task_entrypoint,&pcb[process_id]);
-        pcb[process_id].status = TASK_READY;
-        //为多锁准备
-        pcb[process_id].lock_time = 0;
-        //cursor wakuptime暂时不初始化，list在入队列时初始化。
-        enqueue(&ready_queue,&pcb[process_id]);
-        process_id++;
+    list_init(&sleep_queue);        
     }
+    
+    int task_id=-1;
+    for(int j=0;j<tasknum;j++){
+        if(strcmp(tasks[j].name,name)==0){
+            task_id = j;
+            break;
+        }
+    }
+    if(task_id == -1)
+        return 0; //不存在该任务，直接返回0（非法）
+    int hitid=-1;
+    for(int i=0;i<NUM_MAX_TASK;i++)
+        if(pcb_flag[i]==0)
+        {
+            hitid=i;
+            pcb_flag[i]=1;
+            break;
+        }
+        
+    assert(hitid>=0);
+    int pid=hitid+1;
+    pcb[hitid].pid=pid;     //完成初始化后加1
+    //初始化主线程tid为-1
+    pcb[hitid].tid=-1;
+    pcb[hitid].wakeup_time = 0;
+    pcb[hitid].kernel_sp = allocKernelPage(1)+PAGE_SIZE;   //alloc返回的是栈底，需要先移动到栈顶再填数据
+    pcb[hitid].user_sp = allocUserPage(1)+PAGE_SIZE;
+    list_init(&pcb[hitid].wait_queue);
+    char **argv_base;
+    if(isshell==0)
+    {
+        //参数排布
+        argv_base = (char **)(pcb[hitid].user_sp - ARGV_OFFSET);
+        char *strptr = (char *)argv_base;
+        char **argvptr= argv_base;
+        for(int i=0;i<argc;i++)
+        {
+            strptr -= strlen(argv[i])+1;
+            strcpy(strptr,argv[i]);
+            *argvptr = strptr;
+            argvptr ++; //注意类型，这里每加1，内存位置偏移sizeof(char *)
+        }
+        //assert(((unsigned int)pcb[hitid].user_sp - (unsigned int)strptr) < ARG_SIZE );
+        // while(1) ;            
+        pcb[hitid].user_sp -= ARG_SIZE; //进行偏移，注意对齐
+    }
+    else{
+        argv_base = 0;
+    }
+
+    //注意task.entry只是镜像中偏移，实际计算需要通过taskid
+    ptr_t task_entrypoint = TASK_MEM_BASE + task_id*TASK_SIZE;
+    init_pcb_stack(pcb[hitid].kernel_sp,pcb[hitid].user_sp,task_entrypoint,&pcb[hitid],argc,argv_base,rc_addr);
+    pcb[hitid].status = TASK_READY;
+    //为多锁准备
+    pcb[hitid].lock_time = 0;
+    //cursor wakuptime暂时不初始化，list在入队列时初始化。
+    //printk("hitid = %d\n",hitid);
+    enqueue(&ready_queue,&pcb[hitid]);
+    //process_id++;
+    
+    if(isshell==1){
     /* TODO: [p2-task1] remember to initialize 'current_running' */
-    current_running = &pid0_pcb;
+    current_running = &pid0_pcb;        
+    }
+    // if(pid==3){
+    //     while(1);
+    // }
+    return pid;
 }
 
 static void init_syscall(void)
@@ -182,11 +238,14 @@ static void init_syscall(void)
     // TODO: [p2-task3] initialize system call table.
     // 与跳转表实现略有不同，并非固定地址，相应数组已定义在syscall.c中
     // 对应函数分别位于sched.c screen.c time.c lock.c
-    syscall[SYSCALL_SLEEP]           = (long(*)())do_sleep;
+    syscall[SYSCALL_SLEEP]          = (long(*)())do_sleep;
     syscall[SYSCALL_YIELD]          = (long(*)())do_scheduler;
     syscall[SYSCALL_WRITE]          = (long(*)())screen_write;
+    syscall[SYSCALL_READCH]         = (long(*)())port_read_ch;
     syscall[SYSCALL_CURSOR]         = (long(*)())screen_move_cursor;
     syscall[SYSCALL_REFLUSH]        = (long(*)())screen_reflush;
+    syscall[SYSCALL_CLEAR]          = (long(*)())screen_clear;
+    syscall[SYSCALL_BACKSPACE]      = (long(*)())screen_backspace;
     syscall[SYSCALL_GET_TIMEBASE]   = (long(*)())get_time_base;
     syscall[SYSCALL_GET_TICK]       = (long(*)())get_ticks;
     syscall[SYSCALL_LOCK_INIT]      = (long(*)())do_mutex_lock_init;
@@ -194,6 +253,12 @@ static void init_syscall(void)
     syscall[SYSCALL_LOCK_RELEASE]   = (long(*)())do_mutex_lock_release;
     syscall[SYSCALL_THREAD_CREATE]  = (long(*)())thread_create;
     syscall[SYSCALL_THREAD_RECYCLE] = (long(*)())thread_recycle;
+    syscall[SYSCALL_SHOW_TASK]      = (long(*)())do_process_show;
+    syscall[SYSCALL_EXEC]           = (long(*)())do_exec;
+    syscall[SYSCALL_EXIT]           = (long(*)())do_exit;
+    syscall[SYSCALL_KILL]           = (long(*)())do_kill;
+    syscall[SYSCALL_WAITPID]        = (long(*)())do_waitpid;
+    syscall[SYSCALL_GETPID]         = (long(*)())do_getpid;
 }
 
 int main(void)
@@ -212,10 +277,8 @@ int main(void)
         load_task_img(i);
     
     // Init Process Control Blocks |•'-'•) ✧
-    init_pcb();
+    init_pcb(shellptr,0,NULL,0); //只初始化shell进程
     printk("> [INIT] PCB initialization succeeded.\n");
-
-    
 
     // Read CPU frequency (｡•ᴗ-)_
     time_base = bios_read_fdt(TIMEBASE);
@@ -247,9 +310,9 @@ int main(void)
         // do_scheduler();
 
         // If you do preemptive scheduling, they're used to enable CSR_SIE and wfi
-        enable_preempt();
+        //enable_preempt();
         //在此设置第一个定时器中断，以激发第一次调度
-        set_timer(get_ticks()+time_base/100);
+        set_timer(get_ticks()+TIMER_INTERVAL);
         do_scheduler();
 
         asm volatile("wfi");

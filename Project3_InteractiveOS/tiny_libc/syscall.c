@@ -54,37 +54,39 @@ void sys_reflush(void)
     invoke_syscall(SYSCALL_REFLUSH,IGNORE,IGNORE,IGNORE,IGNORE,IGNORE);
 }
 
-// int sys_mutex_init(int key)
-// {
-//     /* TODO: [p2-task3] call invoke_syscall to implement sys_mutex_init */
-//     return 0;
-// }
+int sys_mutex_init(int key)
+{
+    /* TODO: [p2-task3] call invoke_syscall to implement sys_mutex_init */
+    return invoke_syscall(SYSCALL_LOCK_INIT,(long)key,IGNORE,IGNORE,IGNORE,IGNORE);
+}
 
-// void sys_mutex_acquire(int mutex_idx)
-// {
-//     /* TODO: [p2-task3] call invoke_syscall to implement sys_mutex_acquire */
-// }
+void sys_mutex_acquire(int mutex_idx)
+{
+    /* TODO: [p2-task3] call invoke_syscall to implement sys_mutex_acquire */
+    invoke_syscall(SYSCALL_LOCK_ACQ,(long)mutex_idx,IGNORE,IGNORE,IGNORE,IGNORE);
+}
 
-// void sys_mutex_release(int mutex_idx)
-// {
-//     /* TODO: [p2-task3] call invoke_syscall to implement sys_mutex_release */
-// }
+void sys_mutex_release(int mutex_idx)
+{
+    /* TODO: [p2-task3] call invoke_syscall to implement sys_mutex_release */
+    invoke_syscall(SYSCALL_LOCK_RELEASE,(long)mutex_idx,IGNORE,IGNORE,IGNORE,IGNORE);
+}
 
 //多锁机制下，上述三个函数有所改动
-void sys_mutex_init(void)
-{
-    invoke_syscall(SYSCALL_LOCK_INIT,IGNORE,IGNORE,IGNORE,IGNORE,IGNORE);
-}
+// void sys_mutex_init(int key)
+// {
+//     invoke_syscall(SYSCALL_LOCK_INIT,(long)key,IGNORE,IGNORE,IGNORE,IGNORE);
+// }
 
-void sys_mutex_acquire(void)
-{
-    invoke_syscall(SYSCALL_LOCK_ACQ,IGNORE,IGNORE,IGNORE,IGNORE,IGNORE);
-}
+// void sys_mutex_acquire(void)
+// {
+//     invoke_syscall(SYSCALL_LOCK_ACQ,IGNORE,IGNORE,IGNORE,IGNORE,IGNORE);
+// }
 
-void sys_mutex_release(void)
-{
-    invoke_syscall(SYSCALL_LOCK_RELEASE,IGNORE,IGNORE,IGNORE,IGNORE,IGNORE);
-}
+// void sys_mutex_release(void)
+// {
+//     invoke_syscall(SYSCALL_LOCK_RELEASE,IGNORE,IGNORE,IGNORE,IGNORE,IGNORE);
+// }
 
 
 long sys_get_timebase(void)
@@ -122,47 +124,62 @@ void sys_thread_recycle(){
 }
 
 // S-core
-pid_t  sys_exec(int id, int argc, uint64_t arg0, uint64_t arg1, uint64_t arg2)
-{
-    /* TODO: [p3-task1] call invoke_syscall to implement sys_exec for S_CORE */
-}    
-// A/C-core
-// pid_t  sys_exec(char *name, int argc, char **argv)
+// pid_t  sys_exec(int id, int argc, uint64_t arg0, uint64_t arg1, uint64_t arg2)
 // {
-//     /* TODO: [p3-task1] call invoke_syscall to implement sys_exec */
-// }
+//     /* TODO: [p3-task1] call invoke_syscall to implement sys_exec for S_CORE */
+// }    
+// A/C-core
+pid_t  sys_exec(char *name, int argc, char **argv)
+{
+    /* TODO: [p3-task1] call invoke_syscall to implement sys_exec */
+    return invoke_syscall(SYSCALL_EXEC,(long)name,(long)argc,(long)argv,(long)&sys_exit,IGNORE);
+}
 
+void sys_backspace(void)
+{
+    invoke_syscall(SYSCALL_BACKSPACE,IGNORE,IGNORE,IGNORE,IGNORE,IGNORE);
+}
 
+void sys_clear(void){
+    invoke_syscall(SYSCALL_CLEAR,IGNORE,IGNORE,IGNORE,IGNORE,IGNORE);
+}
 void sys_exit(void)
 {
     /* TODO: [p3-task1] call invoke_syscall to implement sys_exit */
+    invoke_syscall(SYSCALL_EXIT,IGNORE,IGNORE,IGNORE,IGNORE,IGNORE);
 }
 
 int  sys_kill(pid_t pid)
 {
     /* TODO: [p3-task1] call invoke_syscall to implement sys_kill */
+    return invoke_syscall(SYSCALL_KILL,(long)pid,IGNORE,IGNORE,IGNORE,IGNORE);
 }
 
 int  sys_waitpid(pid_t pid)
 {
     /* TODO: [p3-task1] call invoke_syscall to implement sys_waitpid */
+    return invoke_syscall(SYSCALL_WAITPID,(long)pid,IGNORE,IGNORE,IGNORE,IGNORE);
 }
 
 
 void sys_ps(void)
 {
     /* TODO: [p3-task1] call invoke_syscall to implement sys_ps */
+    invoke_syscall(SYSCALL_SHOW_TASK,IGNORE,IGNORE,IGNORE,IGNORE,IGNORE);
 }
 
 pid_t sys_getpid()
 {
     /* TODO: [p3-task1] call invoke_syscall to implement sys_getpid */
+    return invoke_syscall(SYSCALL_GETPID,IGNORE,IGNORE,IGNORE,IGNORE,IGNORE);
 }
 
 int  sys_getchar(void)
 {
     /* TODO: [p3-task1] call invoke_syscall to implement sys_getchar */
+    return invoke_syscall(SYSCALL_READCH,IGNORE,IGNORE,IGNORE,IGNORE,IGNORE);
 }
+
 
 int  sys_barrier_init(int key, int goal)
 {

@@ -225,7 +225,6 @@ ENTRY(ret_from_exception)
   /* TODO: [p2-task3] restore context via provided macro and return to sepc */
   /* HINT: remember to check your sp, does it point to the right address? */
   RESTORE_CONTEXT
-  # 恢复末端将sp恢复为用户栈
   sret
 ENDPROC(ret_from_exception)
 

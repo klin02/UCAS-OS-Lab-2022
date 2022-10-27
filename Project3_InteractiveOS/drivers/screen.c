@@ -9,9 +9,12 @@
 #define SCREEN_HEIGHT   50
 #define SCREEN_LOC(x, y) ((y) * SCREEN_WIDTH + (x))
 
+#define SHELL_BEGIN 20
+
 /* screen buffer */
 char new_screen[SCREEN_HEIGHT * SCREEN_WIDTH] = {0};
 char old_screen[SCREEN_HEIGHT * SCREEN_WIDTH] = {0};
+void screen_scroll();
 
 /* cursor position */
 static void vt100_move_cursor(int x, int y)
@@ -47,8 +50,25 @@ static void screen_write_ch(char ch)
         new_screen[SCREEN_LOC(current_running->cursor_x, current_running->cursor_y)] = ch;
         current_running->cursor_x++;
     }
+    screen_scroll(); //具备执行条件
 }
 
+//新增滚屏功能
+void screen_scroll()
+{
+    if(current_running->cursor_y == SCREEN_HEIGHT)
+    {
+        screen_reflush();
+        current_running->cursor_y -- ;
+        int i,j;
+        for(i=SHELL_BEGIN+1;i<SCREEN_HEIGHT-1;i++)
+            for(j=0;j<SCREEN_WIDTH;j++)
+                new_screen[SCREEN_LOC(j, i)] = old_screen[SCREEN_LOC(j, i+1)];
+        for(j=0;j<SCREEN_WIDTH;j++)
+            new_screen[SCREEN_LOC(j,SCREEN_HEIGHT-1)] = ' ';
+        screen_reflush();    
+    }
+}
 void init_screen(void)
 {
     vt100_hidden_cursor();
@@ -89,6 +109,12 @@ void screen_write(char *buff)
     }
 }
 
+//新增：退格逻辑
+void screen_backspace(void)
+{
+    current_running->cursor_x--;    
+    new_screen[SCREEN_LOC(current_running->cursor_x, current_running->cursor_y)] = ' ';
+}
 /*
  * This function is used to print the serial port when the clock
  * interrupt is triggered. However, we need to pay attention to

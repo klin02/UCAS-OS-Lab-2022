@@ -18,18 +18,19 @@ int main(int argc, char *argv[])
     int handle1 = sys_mutex_init(LOCK1_KEY);
     int handle2 = sys_mutex_init(LOCK2_KEY);
 
+    //buf1/2分别是两把锁id转为字符串
     char buf1[BUF_LEN];
     char buf2[BUF_LEN];
     assert(itoa(handle1, buf1, BUF_LEN, 10) != -1);
     assert(itoa(handle2, buf2, BUF_LEN, 10) != -1);
-
+    
     // Launch two assistant processes, and pass mutex handles to them
     char location1[BUF_LEN];
     assert(itoa(print_location + 1, location1, BUF_LEN, 10) != -1);
 
     char *argv1[4] = {"ready_to_exit", location1, buf1, buf2};
     pid_t pid1 = sys_exec(argv1[0], 4, argv1);
-
+    
     sys_sleep(1);  // wait enough time for task1 to acquire locks
     
     char location2[BUF_LEN];
@@ -55,6 +56,6 @@ int main(int argc, char *argv[])
     // Finish waitpid(pid2)
     sys_move_cursor(0, print_location);
     printf("> [TASK] Task (pid=%d) has exited.                ", pid2);
-
+    //sys_exit();
     return 0;
 }

@@ -3,6 +3,12 @@
 
 ENTRY(_start)
 
+    # 保存和恢复a0 a1等，以正确向main传参
+    sd  a0,0(sp)
+    addi sp, sp, -8
+    sd  a1,0(sp)
+    addi sp, sp, -8
+
     /* TODO: [p1-task3] setup C runtime environment for the user program */
     la  a0, __bss_start
     la  a1, __BSS_END__
@@ -11,6 +17,11 @@ ENTRY(_start)
     addi a0, a0, 4
     blt  a0, a1, Clear_Bss
 
+    addi sp, sp, 8
+    ld  a1, 0(sp)
+    addi sp, sp, 8
+    ld  a0, 0(sp) 
+    
     /* TODO: [p1-task3] enter main function */
     sd  ra,0(sp)
     addi sp,sp,-8

@@ -120,14 +120,8 @@ void thread_recycle(){
         freeKernelPage(Kernel_page_num);
         freeUserPage(User_page_num);
         //回收tcb块
-        tcb_flag[current_running->tcb_num] == 0;
-        //改写自do_scheduler
-        pcb_t * next_running;
-        next_running = dequeue(&ready_queue);
-        pcb_t * last_running;
-        last_running = current_running;
-        next_running->status = TASK_RUNNING;
-        current_running = next_running;
-        // TODO: [p2-task1] switch_to current_running
-        switch_to(last_running,current_running);
+        tcb_flag[current_running->tcb_num] = 0;
+        //更新current状态即可复用do_scheduler
+        current_running->status = TASK_EXITED;
+        do_scheduler();
 }

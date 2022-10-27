@@ -42,4 +42,7 @@ void screen_write(char *buff);
 /* move cursor int (x,y) */
 void screen_move_cursor(int x, int y);
 
+//新增：退格逻辑
+void screen_backspace(void);
+
 #endif

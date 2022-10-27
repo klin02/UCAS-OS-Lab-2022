@@ -30,7 +30,6 @@ int strlen(const char *src)
     return i;
 }
 
-
 int strcmp(const char *str1, const char *str2)
 {
     while (*str1 && *str2) {

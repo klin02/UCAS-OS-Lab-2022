@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
     printf("> [TASK] I want to acquire mutex lock1 (handle=%d).", handle1);
 
     sys_mutex_acquire(handle1);
-
+    
     sys_move_cursor(0, print_location);
     printf("> [TASK] I have acquired mutex lock1 (handle=%d).  ", handle1);
 
@@ -31,6 +31,7 @@ int main(int argc, char *argv[])
     printf("> [TASK] I have acquired mutex lock2 (handle=%d).  ", handle2);
 
     sys_mutex_release(handle2);
-
+    sys_move_cursor(0, print_location);
+    //sys_exit();
     return 0;
 }

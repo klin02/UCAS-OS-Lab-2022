@@ -32,8 +32,8 @@ void handle_irq_timer(regs_context_t *regs, uint64_t stval, uint64_t scause)
     // Note: use bios_set_timer to reset the timer and remember to reschedule
     check_sleeping();
     //to let it run in pynq, the divisor should be less than 20000
-    do_scheduler();
     set_timer(get_ticks()+TIMER_INTERVAL);
+    do_scheduler();
 }
 
 void init_exception()

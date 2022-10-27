@@ -96,6 +96,9 @@ typedef struct pcb
 
     //为多锁状态进程公平获取锁准备，获取次数越多，优先级越低。需初始化
     int lock_time;
+
+    //等待该进程结束的队列
+    list_head wait_queue;
 } pcb_t;
 
 /* ready queue to run */
@@ -109,6 +112,7 @@ extern pcb_t * volatile current_running;
 extern pid_t process_id;
 
 extern pcb_t pcb[NUM_MAX_TASK];
+extern int pcb_flag[NUM_MAX_TASK];
 extern pcb_t pid0_pcb;
 extern const ptr_t pid0_stack;
 
@@ -122,11 +126,12 @@ void do_unblock(list_node_t *);
 void enqueue(list_head* queue,pcb_t* pnode);
 pcb_t * dequeue(list_head* queue);
 
+void pcb_recycle(pid_t pid);
 /* TODO [P3-TASK1] exec exit kill waitpid ps*/
 #ifdef S_CORE
 extern pid_t do_exec(int id, int argc, uint64_t arg0, uint64_t arg1, uint64_t arg2);
 #else
-extern pid_t do_exec(char *name, int argc, char *argv[]);
+extern pid_t do_exec(char *name, int argc, char *argv[],ptr_t rc_addr);
 #endif
 extern void do_exit(void);
 extern int do_kill(pid_t pid);
@@ -134,4 +139,5 @@ extern int do_waitpid(pid_t pid);
 extern void do_process_show();
 extern pid_t do_getpid();
 
+extern pid_t init_pcb(char *name, int argc, char *argv[],ptr_t rc_addr);
 #endif

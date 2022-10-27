@@ -23,10 +23,10 @@
 typedef struct {
     int entry;
     int size;
-    char  name[10];
-} task_info_t; //18 byte
+    char  name[20];
+} task_info_t; //28 byte
 
-#define TASK_MAXNUM 16
+#define TASK_MAXNUM 32
 static task_info_t taskinfo[TASK_MAXNUM];
 
 /* structure to store command line options */
@@ -303,7 +303,6 @@ static void write_img_info(int nbytes_kern, task_info_t *taskinfo,
     fwrite(&tasknum,2,1,img);
     for(int i=0;i<tasknum;i++) 
         fwrite(&taskinfo[i],sizeof(task_info_t),1,img);
-    printf("!!!lock1: id:%d entry:%x size:%ld\n",6,taskinfo[6].entry,taskinfo[6].size);
 }
 
 /* print an error message and exit */
