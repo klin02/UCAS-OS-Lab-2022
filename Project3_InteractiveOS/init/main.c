@@ -108,7 +108,7 @@ static void init_task_info(void)
 
 void init_pcb_stack(
     ptr_t kernel_stack, ptr_t user_stack, ptr_t entry_point,
-    pcb_t *pcb,int argc, char **argv_base,ptr_t rc_addr)//当前kernel_stack仍处于栈顶，应当将pcb的该变量修改至switchto头部，从而使得swtch中可以直接切换
+    pcb_t *pcb,int argc, char **argv_base)//当前kernel_stack仍处于栈顶，应当将pcb的该变量修改至switchto头部，从而使得swtch中可以直接切换
 {
      /* TODO: [p2-task3] initialization of registers on kernel stack
       * HINT: sp, ra, sepc, sstatus
@@ -121,7 +121,7 @@ void init_pcb_stack(
     for(int i=0;i<32;i++)
         pt_regs->regs[i]=0;
     //详细布局见regs.h
-    pt_regs->regs[1] = (reg_t)rc_addr;
+    //pt_regs->regs[1] = (reg_t)rc_addr;
     pt_regs->regs[2] = user_stack; //此处为用户栈
     pt_regs->regs[4] = (reg_t)pcb; //tp指向自身，保证恢复上下文不变 未恢复tp
     pt_regs->regs[10] = (reg_t)argc; //a0
@@ -149,7 +149,7 @@ void init_pcb_stack(
     // }
 }
 
-pid_t init_pcb(char *name, int argc, char *argv[],ptr_t rc_addr)
+pid_t init_pcb(char *name, int argc, char *argv[])
 {
     /* TODO: [p2-task1] load needed tasks and init their corresponding PCB */
     int isshell=0;
@@ -214,7 +214,7 @@ pid_t init_pcb(char *name, int argc, char *argv[],ptr_t rc_addr)
 
     //注意task.entry只是镜像中偏移，实际计算需要通过taskid
     ptr_t task_entrypoint = TASK_MEM_BASE + task_id*TASK_SIZE;
-    init_pcb_stack(pcb[hitid].kernel_sp,pcb[hitid].user_sp,task_entrypoint,&pcb[hitid],argc,argv_base,rc_addr);
+    init_pcb_stack(pcb[hitid].kernel_sp,pcb[hitid].user_sp,task_entrypoint,&pcb[hitid],argc,argv_base);
     pcb[hitid].status = TASK_READY;
     //为多锁准备
     pcb[hitid].lock_time = 0;
@@ -277,7 +277,7 @@ int main(void)
         load_task_img(i);
     
     // Init Process Control Blocks |•'-'•) ✧
-    init_pcb(shellptr,0,NULL,0); //只初始化shell进程
+    init_pcb(shellptr,0,NULL); //只初始化shell进程
     printk("> [INIT] PCB initialization succeeded.\n");
 
     // Read CPU frequency (｡•ᴗ-)_

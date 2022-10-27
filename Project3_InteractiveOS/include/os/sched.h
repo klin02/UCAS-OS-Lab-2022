@@ -131,7 +131,7 @@ void pcb_recycle(pid_t pid);
 #ifdef S_CORE
 extern pid_t do_exec(int id, int argc, uint64_t arg0, uint64_t arg1, uint64_t arg2);
 #else
-extern pid_t do_exec(char *name, int argc, char *argv[],ptr_t rc_addr);
+extern pid_t do_exec(char *name, int argc, char *argv[]);
 #endif
 extern void do_exit(void);
 extern int do_kill(pid_t pid);
@@ -139,5 +139,5 @@ extern int do_waitpid(pid_t pid);
 extern void do_process_show();
 extern pid_t do_getpid();
 
-extern pid_t init_pcb(char *name, int argc, char *argv[],ptr_t rc_addr);
+extern pid_t init_pcb(char *name, int argc, char *argv[]);
 #endif

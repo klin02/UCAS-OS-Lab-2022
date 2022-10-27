@@ -9,6 +9,7 @@ ENTRY(_start)
     sd  a1,0(sp)
     addi sp, sp, -8
 
+    #la a3, sys_exit
     /* TODO: [p1-task3] setup C runtime environment for the user program */
     la  a0, __bss_start
     la  a1, __BSS_END__
@@ -27,7 +28,8 @@ ENTRY(_start)
     addi sp,sp,-8
     call main
     addi sp,sp,8
-    ld  ra,0(sp)
+    # ld  ra,0(sp)
+    la  ra,sys_exit
 
     /* TODO: [P3] call sys_exit */
 

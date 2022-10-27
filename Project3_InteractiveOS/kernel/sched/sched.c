@@ -134,7 +134,7 @@ void do_process_show(){
 }
 
 
-pid_t do_exec(char *name, int argc, char *argv[],ptr_t rc_addr){
+pid_t do_exec(char *name, int argc, char *argv[]){
     //printk("stophere;");
     //printk("name:%s tasknum:%d\n",name,tasknum);
     //printk("size:%d \n",sizeof(argv[0]));
@@ -143,7 +143,7 @@ pid_t do_exec(char *name, int argc, char *argv[],ptr_t rc_addr){
         printk("shell is exited.\n");
         return 0;
     }
-    pid_t pid = init_pcb(name,argc,argv,rc_addr);
+    pid_t pid = init_pcb(name,argc,argv);
     //do_scheduler();
     //printk("pid=%d\n",pid);
     return pid; //不存在时返回0
