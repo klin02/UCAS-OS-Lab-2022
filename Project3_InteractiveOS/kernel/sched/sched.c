@@ -49,8 +49,8 @@ void do_scheduler(void)
     next_running = dequeue(&ready_queue);
     //考虑就绪队列中已经被杀死的进程：回收，重新取
     while( next_running !=NULL && next_running->status == TASK_EXITED){
-        pid_t nextpid = next_running->pid;
-        pcb_recycle(nextpid);
+        // pid_t nextpid = next_running->pid;
+        // pcb_recycle(nextpid);
         //重取
         next_running = dequeue(&ready_queue);
     }
@@ -149,7 +149,7 @@ pid_t do_exec(char *name, int argc, char *argv[]){
     //printk("size:%d \n",sizeof(argv[0]));
     char *shellptr = "shell";
     if(strcmp(name,shellptr)==0){
-        printk("shell is exited.\n");
+        printk("shell exists.\n");
         return 0;
     }
     pid_t pid = init_pcb(name,argc,argv);
@@ -181,6 +181,11 @@ void pcb_recycle(pid_t pid){
         dequeue(&(pcb[pid-1].wait_queue));
         do_unblock(&(tmp->list)); //改变状态及入队列
     }
+    //释放占用信箱
+    for(int i=0;i<pcb[pid-1].mbox_cnt;i++){
+        do_mbox_close(pcb[pid-1].mbox_arr[i]);
+    }
+    pcb[pid-1].mbox_cnt =0;
 }
 void do_exit(void){
     pid_t pid = current_running->pid;
@@ -197,6 +202,7 @@ int do_kill(pid_t pid){
     }
     else if(pcb_flag[pid-1] == 1){
         pcb[pid-1].status = TASK_EXITED;
+        pcb_recycle(pid);
         return 1;
     }
     else 

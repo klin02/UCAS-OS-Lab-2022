@@ -122,6 +122,7 @@ typedef struct mailbox
     char buf[MAX_MBOX_LENGTH];
     mbox_status_t status;
     int  index; //当前填充位置
+    int  visitor;
     list_head full_queue;
     list_head empty_queue;
 } mailbox_t;

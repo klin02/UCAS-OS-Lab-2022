@@ -219,6 +219,7 @@ void init_mbox(){
         bzero(mbox[i].buf,MAX_MBOX_LENGTH);
         mbox[i].status = CLOSED;
         mbox[i].index =0;
+        mbox[i].visitor =0;
         list_init(&mbox[i].full_queue);
         list_init(&mbox[i].empty_queue);
     }
@@ -226,8 +227,12 @@ void init_mbox(){
 int do_mbox_open(char *name){
     //首先遍历，如果已经打开，直接获取，否则创建
     for(int i=0;i<MBOX_NUM;i++){
-        if(mbox[i].status == OPEN && strcmp(mbox[i].name,name)==0)
+        if(mbox[i].status == OPEN && strcmp(mbox[i].name,name)==0){
+            //记录该进程占用的信箱
+            current_running->mbox_arr[current_running->mbox_cnt++] = i;
+            mbox[i].visitor++;
             return i;
+        }
     }
     //未找到，则创建
     for(int i=0;i<MBOX_NUM;i++){
@@ -235,14 +240,27 @@ int do_mbox_open(char *name){
         {
             strcpy(mbox[i].name,name);
             mbox[i].status = OPEN;
+            current_running->mbox_arr[current_running->mbox_cnt++] = i;
+            mbox[i].visitor++;
             //buf index queue都应该由初始化或回收完成
             return i;
         }
     }
+    printk("Err: All mbox are used\n");
 }
 void do_mbox_close(int mbox_idx){
-    //？所有用到信箱的都关闭才关闭
-    mbox[mbox_idx].status = CLOSED;
+    mbox[mbox_idx].visitor --;
+    if(mbox[mbox_idx].visitor==0){
+        //全部访问进程都结束
+        bzero(mbox[mbox_idx].name,20);
+        bzero(mbox[mbox_idx].buf,MAX_MBOX_LENGTH);
+        mbox[mbox_idx].status = CLOSED;
+        mbox[mbox_idx].index =0;
+        mbox[mbox_idx].visitor =0;
+        list_init(&mbox[mbox_idx].full_queue);
+        list_init(&mbox[mbox_idx].empty_queue);
+        //printk("                                     Close Mbox suc!");
+    }
 }
 int do_mbox_send(int mbox_idx, void * msg, int msg_length){
     if(mbox[mbox_idx].status == CLOSED){

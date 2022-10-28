@@ -33,7 +33,7 @@
 #include <os/list.h>
 
 #define NUM_MAX_TASK 16
-
+#define MBOX_NUM 16
 /* used to save register infomation */
 typedef struct regs_context
 {
@@ -99,6 +99,10 @@ typedef struct pcb
 
     //等待该进程结束的队列
     list_head wait_queue;
+
+    //占用的信箱
+    int mbox_arr[MBOX_NUM];
+    int mbox_cnt;
 } pcb_t;
 
 /* ready queue to run */

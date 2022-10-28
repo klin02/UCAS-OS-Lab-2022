@@ -190,6 +190,11 @@ pid_t init_pcb(char *name, int argc, char *argv[])
     pcb[hitid].kernel_sp = allocKernelPage(1)+PAGE_SIZE;   //alloc返回的是栈底，需要先移动到栈顶再填数据
     pcb[hitid].user_sp = allocUserPage(1)+PAGE_SIZE;
     list_init(&pcb[hitid].wait_queue);
+    for(int i=0;i<MBOX_NUM;i++){
+        pcb[hitid].mbox_arr[i]=0;
+    }
+    pcb[hitid].mbox_cnt =0;
+
     char **argv_base;
     if(isshell==0)
     {

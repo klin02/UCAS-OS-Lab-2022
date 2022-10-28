@@ -16,6 +16,7 @@ static inline uint32_t atomic_swap(uint32_t val, ptr_t mem_addr)
     return ret;
 }
 
+//返回原值，写入新值，相当于xchg
 static inline uint64_t atomic_swap_d(uint64_t val, ptr_t mem_addr)
 {
     uint64_t ret;
