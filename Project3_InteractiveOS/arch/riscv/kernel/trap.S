@@ -13,6 +13,7 @@ ENTRY(setup_exception)
   li t0, SR_SIE
   csrw CSR_SSTATUS,t0
 
+  # 核间中断，时间中断，中断控制器中断
   li t0, SIE_SSIE | SIE_STIE | SIE_SEIE
   csrw CSR_SIE,t0
     

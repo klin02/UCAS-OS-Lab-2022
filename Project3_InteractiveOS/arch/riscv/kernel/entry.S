@@ -145,6 +145,25 @@ ENTRY(disable_interrupt)
   jr ra
 ENDPROC(disable_interrupt)
 
+# 新增：disable clear enable sw int (eg. ipi)
+ENTRY(disable_sw_interrupt)
+  li t0, SIE_SSIE
+  csrc CSR_SIE, t0
+  jr ra
+ENDPROC(disable_sw_interrupt)
+
+ENTRY(clear_sw_interrupt)
+  li t0, SIE_SSIE
+  csrc CSR_SIP, t0
+  jr ra
+ENDPROC(clear_sw_interrupt)
+
+ENTRY(enable_sw_interrupt)
+  li t0, SIE_SSIE
+  csrs CSR_SSTATUS, t0
+  jr ra
+ENDPROC(enable_sw_interrupt)
+
 // NOTE: the address of previous pcb in a0
 // NOTE: the address of next pcb in a1
 ENTRY(switch_to)
@@ -224,6 +243,7 @@ ENDPROC(switch_to)
 ENTRY(ret_from_exception)
   /* TODO: [p2-task3] restore context via provided macro and return to sepc */
   /* HINT: remember to check your sp, does it point to the right address? */
+  call unlock_kernel
   RESTORE_CONTEXT
   sret
 ENDPROC(ret_from_exception)
@@ -232,7 +252,7 @@ ENTRY(exception_handler_entry)
 
   /* TODO: [p2-task3] save context via the provided macro */
   SAVE_CONTEXT
-
+  call lock_kernel
   /* TODO: [p2-task3] load ret_from_exception into $ra so that we can return to
    * ret_from_exception when interrupt_help complete.
    */

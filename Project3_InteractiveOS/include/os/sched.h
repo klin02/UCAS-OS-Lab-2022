@@ -113,12 +113,16 @@ extern list_head sleep_queue;
 
 /* current running task PCB */
 extern pcb_t * volatile current_running;
+extern pcb_t * volatile current_running_0;
+extern pcb_t * volatile current_running_1;
 extern pid_t process_id;
 
 extern pcb_t pcb[NUM_MAX_TASK];
 extern int pcb_flag[NUM_MAX_TASK];
 extern pcb_t pid0_pcb;
 extern const ptr_t pid0_stack;
+extern pcb_t pid1_pcb;
+extern const ptr_t pid1_stack;
 
 extern void switch_to(pcb_t *prev, pcb_t *next);
 void do_scheduler(void);

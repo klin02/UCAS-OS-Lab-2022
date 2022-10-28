@@ -3,6 +3,7 @@
 #include <os/sched.h>
 #include <os/string.h>
 #include <os/kernel.h>
+#include <os/smp.h>
 #include <printk.h>
 #include <assert.h>
 #include <screen.h>
@@ -18,6 +19,7 @@ void interrupt_helper(regs_context_t *regs, uint64_t stval, uint64_t scause)
     // TODO: [p2-task3] & [p2-task4] interrupt handler.
     // call corresponding handler by the value of `scause`
     //相关定义见csr.h
+    current_running = (get_current_cpu_id() ==0) ? current_running_0 : current_running_1;
     uint64_t type = scause & SCAUSE_IRQ_FLAG; //除最高位全零
     uint64_t code = scause & ~SCAUSE_IRQ_FLAG; //最高位为零
     if(type)

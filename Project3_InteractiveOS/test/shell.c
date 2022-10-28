@@ -61,6 +61,14 @@ char oplist[][10]=  {
                     };
 int main(void)
 {
+
+    // for (int i = 0;; i++)
+    // {
+    //     sys_move_cursor(0, SHELL_BEGIN);
+    //     printf("> [TASK] This task is to test scheduler. (%d)", i);
+    //     sys_yield();
+    // }
+
     sys_move_cursor(0, SHELL_BEGIN);
     printf("------------------- COMMAND -------------------\n");
     //printf("> root@UCAS_OS: ");

@@ -29,11 +29,12 @@
 #include <type.h>
 
 #define MEM_SIZE 32
-#define PAGE_SIZE 4096 // 4K
-#define INIT_KERNEL_STACK 0x50500000
+#define PAGE_SIZE 4096 // 4K 0x1000
+#define INIT_KERNEL_STACK_0 0x50500000
+#define INIT_KERNEL_STACK_1 0x50501000
 #define INIT_USER_STACK 0x52500000
 //最开始的一页被分配给了pcb0
-#define FREEMEM_KERNEL (INIT_KERNEL_STACK+PAGE_SIZE)
+#define FREEMEM_KERNEL (INIT_KERNEL_STACK_1+PAGE_SIZE)
 #define FREEMEM_USER INIT_USER_STACK
 
 /* Rounding; only works for n = power of two */

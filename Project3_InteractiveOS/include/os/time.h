@@ -32,7 +32,7 @@
 
 //#define TIMER_INTERVAL 300000
 //#define TIMER_INTERVAL 150000
-#define TIMER_INTERVAL 150000
+#define TIMER_INTERVAL 100000
 
 extern uint64_t time_base;
 extern uint64_t time_elapsed;

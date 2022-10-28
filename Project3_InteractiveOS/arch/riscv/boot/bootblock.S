@@ -1,4 +1,5 @@
 #include <asm/biosdef.h>
+#include <csr.h>
 
 // os size location (os_size could be sectors [p1-task3] or bytes [p1-task4])
 .equ os_size_loc, 0x502001fc
@@ -22,15 +23,18 @@ main:
 	// fence on all memory and I/O
 	fence
 
+    	// a0 is mhartid
+	bnez a0, secondary
+
 	// TODO: [p1-task1] call BIOS to print string "It's bootblock!"
 		// call_bios((long)BIOS_PUTSTR, (long)str, IGNORE, IGNORE, IGNORE, IGNORE);
-	li 	a0, BIOS_PUTSTR
-	la 	a1, msg
-	li 	a2, ignore
-	li 	a3, ignore
-	li 	a4, ignore
-	li 	a5, ignore
-	call 	bios_func_entry
+	# li 	a0, BIOS_PUTSTR
+	# la 	a1, msg
+	# li 	a2, ignore
+	# li 	a3, ignore
+	# li 	a4, ignore
+	# li 	a5, ignore
+	# call 	bios_func_entry
 
 	// TODO: [p1-task2] call BIOS to read kernel in SD card
 		// call_bios((long)BIOS_SDREAD, (long)mem_address, (long)num_of_blocks, (long)block_id, IGNORE, IGNORE);
@@ -86,8 +90,41 @@ End_Mv:
 
 	// then the entry of kernel is the same as addr
 
+	li 	a0, BIOS_PUTSTR
+	la 	a1, msg
+	li 	a2, ignore
+	li 	a3, ignore
+	li 	a4, ignore
+	li 	a5, ignore
+	call 	bios_func_entry
+	
 	// TODO: [p1-task2] jump to kernel to start UCAS-OS
-	 jal 	kernel  //kernel is addr, no func
+	jal 	kernel  //kernel is addr, no func
+	j 	stop 
+
+secondary:
+	/* TODO [P3-task3]: 
+	 * 1. Mask all interrupts
+	 * 2. let stvec pointer to kernel_main
+	 * 3. enable software interrupt for ipi
+	 */
+
+	# 屏蔽所有中断：需同时设置SIP和SIE寄存器
+	csrw 	CSR_SIE, zero
+	csrw 	CSR_SIP, zero
+	# 设置中断入口
+	li 	t0, kernel
+	csrw 	CSR_STVEC, t0
+	# 允许软件中断
+	li 	t0, SIE_SSIE
+	csrs 	CSR_SIE, t0
+	li t0, SR_SIE
+	csrw CSR_SSTATUS, t0
+
+wait_for_wakeup:
+	wfi
+	j wait_for_wakeup
+
 
 // while(1) --> stop here
 stop:

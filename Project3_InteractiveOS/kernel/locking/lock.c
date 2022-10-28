@@ -247,6 +247,7 @@ int do_mbox_open(char *name){
         }
     }
     printk("Err: All mbox are used\n");
+    return -1;
 }
 void do_mbox_close(int mbox_idx){
     mbox[mbox_idx].visitor --;
