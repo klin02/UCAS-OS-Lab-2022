@@ -57,6 +57,7 @@ int main(int argc, char *argv[])
         printf("[Server]: recved msg from %d (blocked: %ld, correctBytes: %ld, errorBytes: %ld)",
               header.sender, blockedCount, correctRecvBytes, errorRecvBytes);
 
+        //接受初始需求，则将位置发送到信箱中
         if (clientInitReq(msgBuffer, header.length)) {
             sys_mbox_send(handle_posmq, &clientPos, sizeof(int));
             ++clientPos;

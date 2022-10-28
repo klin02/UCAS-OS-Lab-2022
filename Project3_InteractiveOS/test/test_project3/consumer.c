@@ -29,6 +29,7 @@ int main(int argc, char *argv[])
 
         while (*(num_staff) == 0)
         {
+            //返回时需要循环判断
             sys_condition_wait(handle_cond, handle_lock);
         }
 

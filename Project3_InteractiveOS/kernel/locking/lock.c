@@ -8,6 +8,9 @@
 
 mutex_lock_t mlocks[LOCK_NUM];
 barrier_t    barr[BARRIER_NUM];
+condition_t  cond[CONDITION_NUM];
+mailbox_t    mbox[MBOX_NUM];
+
 //(type *)0强制转化为地址为0的type类型指针。下述宏定义获得了member成员相对于type指针入口的偏移
 #define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
 //第一行将进行类型检查，确定ptr与member类型是否一致。第二行则是根据成员变量减去偏移值得到了容器值。
@@ -117,9 +120,6 @@ int do_barrier_init(int key, int goal){
         barr[bar_idx].used = 1;
         barr[bar_idx].wait_num =0;
         list_init(&barr[bar_idx].wait_queue);
-        // printk("init: %d %d %d \n",barr[bar_idx].total_num,barr[bar_idx].wait_num,bar_idx);
-        // while(1) ;
-        if(barr[bar_idx].wait_num != 0) printk("Err1: barr is not empty\n");
         return bar_idx;
     }
 }
@@ -129,14 +129,6 @@ void do_barrier_wait(int bar_idx){
         printk("Barr %d does not exist\n",bar_idx);
     }
     else{
-        // printk("Info: %d %d %d\n",barr[bar_idx].wait_num,barr[bar_idx].total_num,bar_idx);
-        // int bef = barr[bar_idx].wait_num;
-        // if(barr[bar_idx].wait_num ==0){
-        //     if(barr[bar_idx].wait_queue.prev == NULL && barr[bar_idx].wait_queue.next == NULL)
-        //     ;
-        //     else 
-        //         printk("ERR: list is not empty\n");
-        // }
         barr[bar_idx].wait_num ++;
         if(barr[bar_idx].wait_num == barr[bar_idx].total_num){
             //barr[bar_idx].wait_num--; //最新的不入
@@ -146,17 +138,12 @@ void do_barrier_wait(int bar_idx){
                 do_unblock(&(tmp->list)); //改变状态及入队列
                 //barr[bar_idx].wait_num--;
             }
-            //if(barr[bar_idx].wait_num != 0) printk("Err2: barr is not empty %d %d %d %d!!\n",barr[bar_idx].wait_num,barr[bar_idx].total_num,bef,bar_idx);
             barr[bar_idx].wait_num=0;
-            list_init(&barr[bar_idx].wait_queue);
             do_scheduler();
         }
         else{
             //printk("                    block");
             do_block(&(current_running->list),&(barr[bar_idx].wait_queue));
-            if(current_running->status != TASK_BLOCKED)
-                printk(" st block!");
-            printk("\n\n\n\n");
             //do_process_show();
             do_scheduler();
         }
@@ -175,7 +162,135 @@ void do_barrier_destroy(int bar_idx){
                 do_unblock(&(tmp->list)); //改变状态及入队列
                 barr[bar_idx].wait_num--;
             }
-        if(barr[bar_idx].wait_num != 0) printk("Err3: barr is not empty\n");
         barr[bar_idx].used=0;
     }
+}
+
+void init_conditions(void){
+    for(int i=0;i<CONDITION_NUM;i++){
+        list_init(&cond[i].wait_queue);
+        cond[i].used=0;
+    }
+}
+int do_condition_init(int key){
+    int cid = key % CONDITION_NUM;
+    if(cond[cid].used ==1)
+    {
+        printk("Cond %d is used",cid);
+        return -1;
+    }
+    else{
+        cond[cid].used =1;
+        return cid;
+    }
+}
+void do_condition_wait(int cond_idx, int mutex_idx){
+    do_block(&(current_running->list),&(cond[cond_idx].wait_queue));
+    do_mutex_lock_release(mutex_idx);
+    do_scheduler();
+    do_mutex_lock_acquire(mutex_idx);
+}
+void do_condition_signal(int cond_idx){
+    if(cond[cond_idx].wait_queue.prev != NULL){
+        pcb_t * tmp = list_entry(cond[cond_idx].wait_queue.prev,pcb_t,list);
+        dequeue(&(cond[cond_idx].wait_queue));
+        do_unblock(&(tmp->list)); //改变状态及入队列
+    }
+}
+void do_condition_broadcast(int cond_idx){
+    while(cond[cond_idx].wait_queue.prev != NULL){
+        pcb_t * tmp = list_entry(cond[cond_idx].wait_queue.prev,pcb_t,list);
+        dequeue(&(cond[cond_idx].wait_queue));
+        do_unblock(&(tmp->list)); //改变状态及入队列
+    }
+}
+void do_condition_destroy(int cond_idx){
+    while(cond[cond_idx].wait_queue.prev != NULL){
+        pcb_t * tmp = list_entry(cond[cond_idx].wait_queue.prev,pcb_t,list);
+        dequeue(&(cond[cond_idx].wait_queue));
+        do_unblock(&(tmp->list)); //改变状态及入队列
+    }
+    cond[cond_idx].used = 0;
+}
+
+void init_mbox(){
+    for(int i=0;i<MBOX_NUM;i++){
+        bzero(mbox[i].name,20);
+        bzero(mbox[i].buf,MAX_MBOX_LENGTH);
+        mbox[i].status = CLOSED;
+        mbox[i].index =0;
+        list_init(&mbox[i].full_queue);
+        list_init(&mbox[i].empty_queue);
+    }
+}
+int do_mbox_open(char *name){
+    //首先遍历，如果已经打开，直接获取，否则创建
+    for(int i=0;i<MBOX_NUM;i++){
+        if(mbox[i].status == OPEN && strcmp(mbox[i].name,name)==0)
+            return i;
+    }
+    //未找到，则创建
+    for(int i=0;i<MBOX_NUM;i++){
+        if(mbox[i].status == CLOSED)
+        {
+            strcpy(mbox[i].name,name);
+            mbox[i].status = OPEN;
+            //buf index queue都应该由初始化或回收完成
+            return i;
+        }
+    }
+}
+void do_mbox_close(int mbox_idx){
+    //？所有用到信箱的都关闭才关闭
+    mbox[mbox_idx].status = CLOSED;
+}
+int do_mbox_send(int mbox_idx, void * msg, int msg_length){
+    if(mbox[mbox_idx].status == CLOSED){
+        printk("Err: mbox %d does no exits;");
+        return 0; //发送失败
+    }
+    int blocked =0; //统计被堵塞的次数
+    while(mbox[mbox_idx].index + msg_length >= MAX_MBOX_LENGTH){ //注意循环判断
+        do_block(&(current_running->list),&(mbox[mbox_idx].full_queue));
+        do_scheduler();
+        blocked++;
+    }
+    //可填充数据
+    for(int i=0;i<msg_length;i++)
+    {
+        mbox[mbox_idx].buf[mbox[mbox_idx].index++] = ((char *)msg)[i];
+    }
+    //清空empty队列
+    while(mbox[mbox_idx].empty_queue.prev != NULL){
+        pcb_t * tmp = list_entry(mbox[mbox_idx].empty_queue.prev,pcb_t,list);
+        dequeue(&(mbox[mbox_idx].empty_queue));
+        do_unblock(&(tmp->list)); //改变状态及入队列
+    }
+    return blocked;
+}
+int do_mbox_recv(int mbox_idx, void * msg, int msg_length){
+    if(mbox[mbox_idx].status == CLOSED){
+        printk("Err: mbox %d does no exits;");
+        return 0; //发送失败
+    }
+    int blocked =0;
+    while(mbox[mbox_idx].index < msg_length){
+        do_block(&(current_running->list),&(mbox[mbox_idx].empty_queue));
+        do_scheduler();
+        blocked++;
+    }
+    //可提取数据
+    //从头部拿出数据，并将剩余位置前移
+    for(int i=0;i<msg_length;i++)
+        ((char *)msg)[i] = mbox[mbox_idx].buf[i];
+    for(int i=0;i<MAX_MBOX_LENGTH-msg_length;i++)
+        mbox[mbox_idx].buf[i] = mbox[mbox_idx].buf[i+msg_length];
+    mbox[mbox_idx].index -= msg_length;
+    //清空full队列
+    while(mbox[mbox_idx].full_queue.prev != NULL){
+        pcb_t * tmp = list_entry(mbox[mbox_idx].full_queue.prev,pcb_t,list);
+        dequeue(&(mbox[mbox_idx].full_queue));
+        do_unblock(&(tmp->list)); //改变状态及入队列
+    }
+    return blocked;
 }

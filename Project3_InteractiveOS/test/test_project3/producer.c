@@ -39,6 +39,7 @@ int main(int argc, char *argv[])
         printf("> [TASK] Total produced %d products. (next in %d seconds)", sum_production, next);
 
         // condition_signal(&condition);
+        //sys_condition_signal(handle_cond);
         sys_condition_broadcast(handle_cond);
 
         sys_sleep(next);

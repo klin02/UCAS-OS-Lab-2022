@@ -202,44 +202,53 @@ void sys_barrier_destroy(int bar_idx)
 int sys_condition_init(int key)
 {
     /* TODO: [p3-task2] call invoke_syscall to implement sys_condition_init */
+    return invoke_syscall(SYSCALL_COND_INIT,(long)key,IGNORE,IGNORE,IGNORE,IGNORE);
 }
 
 void sys_condition_wait(int cond_idx, int mutex_idx)
 {
     /* TODO: [p3-task2] call invoke_syscall to implement sys_condition_wait */
+    invoke_syscall(SYSCALL_COND_WAIT,(long)cond_idx,(long)mutex_idx,IGNORE,IGNORE,IGNORE);
 }
 
 void sys_condition_signal(int cond_idx)
 {
     /* TODO: [p3-task2] call invoke_syscall to implement sys_condition_signal */
+    invoke_syscall(SYSCALL_COND_SIGNAL,(long)cond_idx,IGNORE,IGNORE,IGNORE,IGNORE);
 }
 
 void sys_condition_broadcast(int cond_idx)
 {
     /* TODO: [p3-task2] call invoke_syscall to implement sys_condition_broadcast */
+    invoke_syscall(SYSCALL_COND_BROADCAST,(long)cond_idx,IGNORE,IGNORE,IGNORE,IGNORE);
 }
 
 void sys_condition_destroy(int cond_idx)
 {
     /* TODO: [p3-task2] call invoke_syscall to implement sys_condition_destroy */
+    invoke_syscall(SYSCALL_COND_DESTROY,(long)cond_idx,IGNORE,IGNORE,IGNORE,IGNORE);
 }
 
 int sys_mbox_open(char * name)
 {
     /* TODO: [p3-task2] call invoke_syscall to implement sys_mbox_open */
+    return invoke_syscall(SYSCALL_MBOX_OPEN,(long)name,IGNORE,IGNORE,IGNORE,IGNORE);
 }
 
 void sys_mbox_close(int mbox_id)
 {
     /* TODO: [p3-task2] call invoke_syscall to implement sys_mbox_close */
+    invoke_syscall(SYSCALL_MBOX_CLOSE,(long)mbox_id,IGNORE,IGNORE,IGNORE,IGNORE);
 }
 
 int sys_mbox_send(int mbox_idx, void *msg, int msg_length)
 {
     /* TODO: [p3-task2] call invoke_syscall to implement sys_mbox_send */
+    return invoke_syscall(SYSCALL_MBOX_SEND,(long)mbox_idx,(long)msg,(long)msg_length,IGNORE,IGNORE);
 }
 
 int sys_mbox_recv(int mbox_idx, void *msg, int msg_length)
 {
     /* TODO: [p3-task2] call invoke_syscall to implement sys_mbox_recv */
+    return invoke_syscall(SYSCALL_MBOX_RECV,(long)mbox_idx,(long)msg,(long)msg_length,IGNORE,IGNORE);
 }

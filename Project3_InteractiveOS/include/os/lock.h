@@ -93,9 +93,12 @@ void do_barrier_destroy(int bar_idx);
 typedef struct condition
 {
     // TODO [P3-TASK2 condition]
+    list_head wait_queue;
+    int used;
 } condition_t;
 
 #define CONDITION_NUM 16
+extern condition_t  cond[CONDITION_NUM];
 
 void init_conditions(void);
 int do_condition_init(int key);
@@ -106,12 +109,26 @@ void do_condition_destroy(int cond_idx);
 
 #define MAX_MBOX_LENGTH (64)
 
+typedef enum {
+    CLOSED,
+    OPEN,
+} mbox_status_t;
+
+#define MAX_MBOX_LENGTH (64)
 typedef struct mailbox
 {
     // TODO [P3-TASK2 mailbox]
+    char name[20];
+    char buf[MAX_MBOX_LENGTH];
+    mbox_status_t status;
+    int  index; //当前填充位置
+    list_head full_queue;
+    list_head empty_queue;
 } mailbox_t;
 
 #define MBOX_NUM 16
+extern mailbox_t mbox[MBOX_NUM];
+
 void init_mbox();
 int do_mbox_open(char *name);
 void do_mbox_close(int mbox_idx);

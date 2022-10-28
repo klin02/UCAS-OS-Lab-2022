@@ -15,6 +15,7 @@ static int clientSendMsg(int mq, const char* content, int length)
     int i;
     char msgBuffer[MAX_MBOX_LENGTH] = {0};
     MsgHeader_t* header = (MsgHeader_t*)msgBuffer;
+    //传输前部为信息头
     char* _content = msgBuffer + sizeof(MsgHeader_t);
     header->length = length;
     header->checksum = adler32(content, length);
@@ -47,7 +48,7 @@ int main()
     {
         len = (rand() % ((MAX_MBOX_LENGTH - sizeof(MsgHeader_t))/2)) + 1;
         generateRandomString(strBuffer, len);
-        blocked += clientSendMsg(handle_mq, strBuffer, len);
+        blocked += clientSendMsg(handle_mq, strBuffer, len); //总共的阻塞次数
         bytes += len;
 
         sys_move_cursor(0, position);
