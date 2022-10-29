@@ -36,6 +36,7 @@
 #include <os/string.h>
 #include <os/mm.h>
 #include <os/time.h>
+#include <os/smp.h>
 #include <sys/syscall.h>
 #include <screen.h>
 #include <printk.h>
@@ -156,13 +157,17 @@ pid_t init_pcb(char *name, int argc, char *argv[])
     if(strcmp(name,shellptr)==0)
         isshell=1;
 
+    int mask;
+    //shell使用默认值，其余继承父值
     if(isshell==1){
     //初始化ready queue
     list_init(&ready_queue);
     //part2:初始化sleep queue
-    list_init(&sleep_queue);        
+    list_init(&sleep_queue);     
+    mask = 3;   
     }
-    
+    else 
+    mask = current_running -> mask;
     int task_id=-1;
     for(int j=0;j<tasknum;j++){
         if(strcmp(tasks[j].name,name)==0){
@@ -194,7 +199,7 @@ pid_t init_pcb(char *name, int argc, char *argv[])
         pcb[hitid].mbox_arr[i]=0;
     }
     pcb[hitid].mbox_cnt =0;
-
+    pcb[hitid].mask = mask;
     char **argv_base;
     if(isshell==0)
     {
@@ -272,6 +277,8 @@ static void init_syscall(void)
     syscall[SYSCALL_MBOX_CLOSE]     = (long(*)())do_mbox_close;
     syscall[SYSCALL_MBOX_SEND]      = (long(*)())do_mbox_send;
     syscall[SYSCALL_MBOX_RECV]      = (long(*)())do_mbox_recv;
+    syscall[SYSCALL_RUNMASK]        = (long(*)())do_runmask;
+    syscall[SYSCALL_SETMASK]        = (long(*)())do_setmask;
 }
 
 int main(void)
@@ -336,8 +343,8 @@ int main(void)
         //while(1);
         current_running = current_running_1;
         setup_exception();
-        printk("cpu 1 is start\n");
-    //         enable_preempt();
+        // printk("cpu 1 is start\n");
+             enable_preempt();
     // //在此设置第一个定时器中断，以激发第一次调度
     // set_timer(get_ticks()+TIMER_INTERVAL);
         // unlock_kernel();
@@ -347,7 +354,7 @@ int main(void)
     // TODO: [p2-task4] Setup timer interrupt and enable all interrupt globally
     // NOTE: The function of sstatus.sie is different from sie's
     
-    enable_preempt();
+    //enable_preempt();
     //在此设置第一个定时器中断，以激发第一次调度
     //set_timer(get_ticks()+TIMER_INTERVAL);
     // Infinite while loop, where CPU stays in a low-power state (QAQQQQQQQQQQQ)
@@ -359,7 +366,9 @@ int main(void)
         // If you do preemptive scheduling, they're used to enable CSR_SIE and wfi
         do_scheduler();
         //set_timer(get_ticks()+TIMER_INTERVAL);
-        asm volatile("wfi");
+        //asm volatile("wfi");
+        unlock_kernel();
+        lock_kernel();
     }
 
     return 0;

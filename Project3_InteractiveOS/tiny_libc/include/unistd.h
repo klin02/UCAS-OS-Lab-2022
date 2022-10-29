@@ -36,6 +36,8 @@ void sys_clear(void);
 // pid_t  sys_exec(int id, int argc, uint64_t arg0, uint64_t arg1, uint64_t arg2);
 // A/C-core
 pid_t  sys_exec(char *name, int argc, char **argv);
+void sys_runmask(char *name, int argc, char **argv,int mask);
+void sys_setmask(pid_t pid, int mask);
 
 void sys_exit(void);
 int  sys_kill(pid_t pid);

@@ -103,6 +103,8 @@ typedef struct pcb
     //占用的信箱
     int mbox_arr[MBOX_NUM];
     int mbox_cnt;
+
+    int mask;
 } pcb_t;
 
 /* ready queue to run */
@@ -140,12 +142,16 @@ void pcb_recycle(pid_t pid);
 extern pid_t do_exec(int id, int argc, uint64_t arg0, uint64_t arg1, uint64_t arg2);
 #else
 extern pid_t do_exec(char *name, int argc, char *argv[]);
+extern void do_setmask(int pid, int mask);
 #endif
 extern void do_exit(void);
 extern int do_kill(pid_t pid);
 extern int do_waitpid(pid_t pid);
 extern void do_process_show();
 extern pid_t do_getpid();
+
+extern void do_runmask(char *name, int argc, char **argv,int mask);
+extern void do_setmask(pid_t pid, int mask);
 
 extern pid_t init_pcb(char *name, int argc, char *argv[]);
 #endif

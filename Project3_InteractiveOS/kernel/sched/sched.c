@@ -47,7 +47,6 @@ pcb_t * volatile current_running_1;
 
 /* global process id */
 pid_t process_id = 1;
-
 void do_scheduler(void)
 {
     // TODO: [p2-task3] Check sleep queue to wake up PCBs
@@ -59,46 +58,39 @@ void do_scheduler(void)
     current_running = (cpu_id == 0) ? current_running_0 : current_running_1;
 
     pcb_t * next_running;
-    next_running = dequeue(&ready_queue);
     //考虑就绪队列中已经被杀死的进程：回收，重新取
-    while( next_running !=NULL && next_running->status == TASK_EXITED){
-        // pid_t nextpid = next_running->pid;
-        // pcb_recycle(nextpid);
-        //重取
+    int first=1;
+    while(1){
         next_running = dequeue(&ready_queue);
+        if(next_running !=NULL && next_running->status == TASK_EXITED)
+        ; //重取
+        else break;
     }
     //就绪队列为空时，返回空，next需要指向自己
     if(next_running == NULL) {
         //对于用户进程，switch自己即可。
         //如果持有的进程结束，而没有就绪进程。忙等，持有无效进程，等待有了再切换。
         //对于初始进程，不可swith，也不可return
-        if(current_running->pid==0){
-            unlock_kernel();
-            //while(1);
-            //printk("cpu %d unlock\n",cpu_id);
-            for(long l=0;l<1000000000;l++)
-            ;
-            lock_kernel();
-            // while(1){
-            //     lock_kernel();
-            //     next_running = dequeue(&ready_queue);
-            //     if(next_running)
-            // }
-            
-            return;//main函数中循环，再次寻找
-        }
-        else if(current_running->status == TASK_EXITED)
-        {
-            unlock_kernel();
-            //while(1);
-            //printk("cpu %d unlock\n",cpu_id);
-            for(long l=0;l<1000000000;l++)
-            ;
-            lock_kernel();
+        if(current_running->pid==0 || current_running->status == TASK_EXITED || current_running->status == TASK_BLOCKED){
+            next_running = (cpu_id == 0) ? &pid0_pcb : &pid1_pcb;
+            pcb_t * last_running = current_running;
+            current_running = next_running;
+            if(cpu_id == 0){
+                current_running_0 = current_running;
+            }
+            else{
+                current_running_1 = current_running;
+            }
+            //局部变量，不需要担心
+            //unlock_kernel();
+            switch_to(last_running,next_running);
             return;
         }
         else{
-        switch_to(current_running,current_running);
+        //使用局部变量记录
+        next_running = current_running;
+        //unlock_kernel();
+        switch_to(next_running,next_running);
         return;            
         }
 
@@ -119,14 +111,97 @@ void do_scheduler(void)
 
     next_running->status = TASK_RUNNING;
     current_running = next_running;
-    if(cpu_id == 0)
+    if(cpu_id == 0){
         current_running_0 = current_running;
-    else
+    }
+    else{
         current_running_1 = current_running;
-    // TODO: [p2-task1] switch_to current_running
-    //set_timer(get_ticks()+10000);
-    switch_to(last_running,current_running);
+    }
+    //unlock_kernel();
+    //局部变量，不担心改变
+    switch_to(last_running,next_running);
+
 }
+// void do_scheduler(void)
+// {
+//     // TODO: [p2-task3] Check sleep queue to wake up PCBs
+//     //check_sleeping();
+//     //printl("begin schedule\n");
+//     // TODO: [p2-task1] Modify the current_running pointer.
+//     //将cur加入ready queue。同时从中拿出next
+//     int cpu_id = get_current_cpu_id();
+//     current_running = (cpu_id == 0) ? current_running_0 : current_running_1;
+
+//     pcb_t * next_running;
+//     //考虑就绪队列中已经被杀死的进程：回收，重新取
+//     int first=1;
+//     while(1){
+//         next_running = dequeue(&ready_queue);
+//         if(next_running !=NULL && next_running->status == TASK_EXITED)
+//         ; //重取
+//         else
+//         else break;
+//     }
+//     //就绪队列为空时，返回空，next需要指向自己
+//     if(next_running == NULL) {
+//         //对于用户进程，switch自己即可。
+//         //如果持有的进程结束，而没有就绪进程。忙等，持有无效进程，等待有了再切换。
+//         //对于初始进程，不可swith，也不可return
+//         if(current_running->pid==0){
+//             unlock_kernel();
+//             //while(1);
+//             //printk("cpu %d unlock\n",cpu_id);
+//             for(long l=0;l<100000000;l++)
+//             ;
+//             lock_kernel();
+//             // while(1){
+//             //     lock_kernel();
+//             //     next_running = dequeue(&ready_queue);
+//             //     if(next_running)
+//             // }
+            
+//             return;//main函数中循环，再次寻找
+//         }
+//         else if(current_running->status == TASK_EXITED)
+//         {
+//             unlock_kernel();
+//             //while(1);
+//             //printk("cpu %d unlock\n",cpu_id);
+//             for(long l=0;l<100000000;l++)
+//             ;
+//             lock_kernel();
+//             return;
+//         }
+//         else{
+//         switch_to(current_running,current_running);
+//         return;            
+//         }
+
+//     }    
+        
+//     pcb_t * last_running;
+//     last_running = current_running;
+
+//     if(current_running->pid == 0)
+//     {
+//         //对于寻找到目标的初始进程，才可以设置定时器
+//         set_timer(get_ticks()+TIMER_INTERVAL);
+//     }
+//     if(current_running->pid != 0 && current_running->status != TASK_BLOCKED && current_running->status !=TASK_EXITED){//task1中只需考虑pcb0不回收，后续任务需要考虑状态
+//         current_running->status = TASK_READY;
+//         enqueue(&ready_queue,current_running);
+//     }
+
+//     next_running->status = TASK_RUNNING;
+//     current_running = next_running;
+//     if(cpu_id == 0)
+//         current_running_0 = current_running;
+//     else
+//         current_running_1 = current_running;
+//     // TODO: [p2-task1] switch_to current_running
+//     //set_timer(get_ticks()+10000);
+//     switch_to(last_running,current_running);
+// }
 
 void do_sleep(uint32_t sleep_time)
 {
@@ -180,12 +255,19 @@ void do_process_show(){
     for(int i=0;i<NUM_MAX_TASK;i++){
         if(pcb_flag[i]==0)
             continue;
+        int coreid;
+        if(pcb[i].pid == current_running_0->pid)
+            coreid =0;
+        else if(pcb[i].pid == current_running_1->pid)
+            coreid =1;
+        else
+            coreid =2;//illegal
         printk("[%d] PID : %d  STATUS : ",i,pcb[i].pid);
         switch(pcb[i].status){
-            case TASK_BLOCKED: printk("BLOCKED\n"); break;
-            case TASK_RUNNING: printk("RUNNING\n"); break;
-            case TASK_READY  : printk("READY\n");   break;
-            case TASK_EXITED : printk("EXITED\n");  break;
+            case TASK_BLOCKED: printk("BLOCKED mask:%d\n",pcb[i].mask); break;
+            case TASK_RUNNING: printk("RUNNING mask:%d Running on Core %d\n",pcb[i].mask,coreid); break;
+            case TASK_READY  : printk("READY   mask:%d\n",pcb[i].mask); break;
+            case TASK_EXITED : printk("EXITED  mask:%d\n",pcb[i].mask); break;
             default: break;
         }
     }
@@ -209,6 +291,18 @@ pid_t do_exec(char *name, int argc, char *argv[]){
     //while(1);
 }
 
+void do_runmask(char *name, int argc, char *argv[],int mask){
+    int pid = do_exec(name,argc,argv);
+    do_setmask(pid,mask);
+}
+void do_setmask(int pid,int mask){
+    if(pcb_flag[pid-1] == 0){
+        printk("Err: Setmask Failed.\n");
+    }
+    else{
+        pcb[pid-1].mask = mask;
+    }
+}
 void pcb_recycle(pid_t pid){
     //功能：对应用户栈和内核栈取消占用标记，pcb块取消占用标记，释放等待队列，将属于其的锁队列释放。调度
     //回收内存

@@ -80,8 +80,4 @@ extern void disable_interrupt(void);
 extern void enable_preempt(void);
 extern void disable_preempt(void);
 
-//新增
-extern void disable_sw_interrupt(void);
-extern void clear_sw_interrupt(void);
-extern void enable_sw_interrupt(void);
 #endif

@@ -58,27 +58,30 @@ int main(int argc, char* argv[])
         multiCoreArgs[i].to = MAX_RANGE * (i + 1) / NUM_CPUS;
         multiCoreArgs[i].result = &multi_core_results[i];
     }
-
+    //sys_yield();
     clock_t multiCoreBegin = clock();
     for (int i = 0; i < NUM_CPUS; ++i) {
         char multicore_buf[BUF_LEN];
         assert(itoa((int)&multiCoreArgs[i], multicore_buf, BUF_LEN, 10) != -1);
         char *argv_multicore[2] = {"add", multicore_buf};
         pids[i] = sys_exec(argv_multicore[0], 2, argv_multicore);
+         //sys_yield();
     }
 
     for (int i = 0; i < NUM_CPUS; ++i) {
         sys_waitpid(pids[i]);
+         //sys_yield();
     }
     int multi_core_final_result = 0;
     for (int i = 0; i < NUM_CPUS; ++i) {
         multi_core_final_result += multi_core_results[i];
 	multi_core_final_result = multi_core_final_result % MOD;
+     //sys_yield();
     }
     clock_t multiCoreEnd = clock();
     sys_move_cursor(0, print_location + 6);
     printf("multi core: %ld ticks, result = %d             \n\r", multiCoreEnd - multiCoreBegin, multi_core_final_result);
-
+    //sys_yield();
     sys_exit();    
 }
 

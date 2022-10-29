@@ -52,12 +52,14 @@ void parse();
 void ps();
 pid_t exec();
 void kill();
+void taskset();
 
 char oplist[][10]=  {
                     "clear",
                     "ps",
                     "exec",
-                    "kill"
+                    "kill",
+                    "taskset"
                     };
 int main(void)
 {
@@ -109,6 +111,7 @@ int main(void)
         else if(strcmp(cmdbuf,oplist[1])==0) ps();
         else if(strcmp(cmdbuf,oplist[2])==0) exec();
         else if(strcmp(cmdbuf,oplist[3])==0) kill();
+        else if(strcmp(cmdbuf,oplist[4])==0) taskset();
         else if(cmdbuf[0]=='\0') ;                      //允许直接换行
         else   printf("Error: Unknown Command %s\n",cmdbuf); 
         //printf("%s %s\n",cmdbuf,filebuf);
@@ -138,6 +141,11 @@ void parse(){
     isbackground =0;
 
     int index=0;
+    //跳过开头空格
+    for(;index<strptr;index++)
+        if(strbuf[index]!=' ')
+            break;
+
     for(;index<strptr;index++)
         if(strbuf[index] == ' ' || strbuf=='\0')
             break;
@@ -148,6 +156,11 @@ void parse(){
     int tmpptr=0;
     int space=1; //允许连续空格
     index++;
+    //跳过开头空格
+    for(;index<strptr;index++)
+        if(strbuf[index]!=' ')
+            break;
+
     for(;index<strptr;index++)
     {
         if(strbuf[index] == '\0'){
@@ -221,4 +234,38 @@ void kill(){
         printf("Info : kill successfully\n");
     else 
         printf("Error: the pid is no allocated\n");
+}
+
+void taskset(){
+    char *pstr = "-p";
+    if(strcmp(argv[0],pstr)==0 && strlen(argv[1])==3 && argc==3){
+        int mask;
+        char ch = argv[1][2]; //0x后的第三个字符
+        if(ch>='0' && ch<='9')
+            mask = (int)(ch-'0');
+        else if(ch >='a' && ch <='f')
+            mask = (int)(ch-'a'+10);
+        else 
+            printf("Err!");
+        if(mask < 0 || mask > 3)
+            printf("Mask is out of range\n");
+        pid_t pid = atoi(argv[2]);
+        sys_setmask(pid,mask);
+    }
+    else if(strlen(argv[0])==3 && argc==2){
+        int mask;
+        char ch = argv[0][2]; //0x后的第三个字符
+        if(ch>='0' && ch<='9')
+            mask = (int)(ch-'0');
+        else if(ch >='a' && ch <='f')
+            mask = (int)(ch-'a'+10);
+        else 
+            printf("Err!");
+        if(mask < 0 || mask > 3)
+            printf("Mask is out of range\n");
+        sys_runmask(argv[1],argc-1,argv+1,mask);
+    }
+    else{
+        printf("Unknown Taskset\n");
+    }
 }

@@ -135,6 +135,16 @@ pid_t  sys_exec(char *name, int argc, char **argv)
     return invoke_syscall(SYSCALL_EXEC,(long)name,(long)argc,(long)argv,IGNORE,IGNORE);
 }
 
+void  sys_runmask(char *name, int argc, char **argv,int mask)
+{
+    invoke_syscall(SYSCALL_EXEC,(long)name,(long)argc,(long)argv,(long)mask,IGNORE);
+}
+
+void sys_setmask(pid_t pid, int mask)
+{
+    invoke_syscall(SYSCALL_SETMASK,(long)pid,(long)mask,IGNORE,IGNORE,IGNORE);
+}
+
 void sys_backspace(void)
 {
     invoke_syscall(SYSCALL_BACKSPACE,IGNORE,IGNORE,IGNORE,IGNORE,IGNORE);

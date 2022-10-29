@@ -63,8 +63,10 @@ void check_sleeping(void)
         isfirst=0;
         tmppcb = list_entry(tmp,pcb_t,list);
         if(tmppcb->wakeup_time <= cur_time){
-            if(tmp==head)
-                changehead=1;
+            if(tmp==head){
+                changehead=1; 
+                isfirst = 1;
+            }
             dequeue(&sleep_queue);
             do_unblock(&(tmppcb->list)); //需要改变状态再入队
         }
