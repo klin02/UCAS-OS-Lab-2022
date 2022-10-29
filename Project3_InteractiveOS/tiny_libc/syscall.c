@@ -137,7 +137,7 @@ pid_t  sys_exec(char *name, int argc, char **argv)
 
 void  sys_runmask(char *name, int argc, char **argv,int mask)
 {
-    invoke_syscall(SYSCALL_EXEC,(long)name,(long)argc,(long)argv,(long)mask,IGNORE);
+    invoke_syscall(SYSCALL_RUNMASK,(long)name,(long)argc,(long)argv,(long)mask,IGNORE);
 }
 
 void sys_setmask(pid_t pid, int mask)
