@@ -82,6 +82,7 @@ void do_scheduler(void)
                 changehead=1; 
                 isfirst = 1;
             }
+            pcb_recycle(next_running->pid);
         } 
         else if(next_running->status == TASK_READY && next_running->mask!=3 && next_running->mask != cpu_id+1)//重新入队
         {
@@ -107,7 +108,9 @@ void do_scheduler(void)
             else{
                 current_running_1 = current_running;
             }
-        if(last_running->pid==0 || last_running->status == TASK_EXITED || last_running->status == TASK_BLOCKED)
+        if(last_running->status!=0 && last_running->status == TASK_EXITED)
+            pcb_recycle(last_running->pid); 
+        else if(last_running->pid==0 || last_running->status == TASK_EXITED || last_running->status == TASK_BLOCKED)
             ;
         else
         {
@@ -126,7 +129,10 @@ void do_scheduler(void)
         //对于寻找到目标的初始进程，才可以设置定时器
         set_timer(get_ticks()+TIMER_INTERVAL);
     }
-    if(current_running->pid != 0 && current_running->status != TASK_BLOCKED && current_running->status !=TASK_EXITED){//task1中只需考虑pcb0不回收，后续任务需要考虑状态
+
+    if(current_running->status!=0 && current_running->status == TASK_EXITED)
+        pcb_recycle(current_running->pid);
+    else if(current_running->pid != 0 && current_running->status != TASK_BLOCKED && current_running->status !=TASK_EXITED){//task1中只需考虑pcb0不回收，后续任务需要考虑状态
         current_running->status = TASK_READY;
         enqueue(&ready_queue,current_running);
     }
@@ -274,7 +280,7 @@ void pcb_recycle(pid_t pid){
 }
 void do_exit(void){
     pid_t pid = current_running->pid;
-    pcb_recycle(pid);
+    //pcb_recycle(pid);
     current_running->status = TASK_EXITED;
     do_scheduler();
 }
@@ -287,7 +293,7 @@ int do_kill(pid_t pid){
     }
     else if(pcb_flag[pid-1] == 1){
         pcb[pid-1].status = TASK_EXITED;
-        pcb_recycle(pid);
+        //pcb_recycle(pid);
         return 1;
     }
     else 
