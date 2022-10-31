@@ -145,9 +145,6 @@ void init_pcb_stack(
     pcb->kernel_sp = kernel_stack - sizeof(regs_context_t) - sizeof(switchto_context_t);
     pt_switchto->regs[0] = (reg_t)&ret_from_exception; //ra 函数需要取地址
     pt_switchto->regs[1] = pcb->kernel_sp; //sp
-    // if(argc == 4){
-    //     printk("stk: %d %x\n",pt_regs->regs[10],pt_regs->regs[11]);
-    // }
 }
 
 pid_t init_pcb(char *name, int argc, char *argv[])
@@ -219,9 +216,7 @@ pid_t init_pcb(char *name, int argc, char *argv[])
             strcpy(strptr,argv[i]);
             *argvptr = strptr;
             argvptr ++; //注意类型，这里每加1，内存位置偏移sizeof(char *)
-        }
-        //assert(((unsigned int)pcb[hitid].user_sp - (unsigned int)strptr) < ARG_SIZE );
-        // while(1) ;            
+        } 
         pcb[hitid].user_sp -= ARG_SIZE; //进行偏移，注意对齐
     }
     else{
@@ -234,14 +229,7 @@ pid_t init_pcb(char *name, int argc, char *argv[])
     pcb[hitid].status = TASK_READY;
     //为多锁准备
     pcb[hitid].lock_time = 0;
-    //cursor wakuptime暂时不初始化，list在入队列时初始化。
-    //printk("hitid = %d\n",hitid);
     enqueue(&ready_queue,&pcb[hitid]);
-    //process_id++;
-    
-    // if(pid==3){
-    //     while(1);
-    // }
     return pid;
 }
 
@@ -308,7 +296,6 @@ int main(void)
     
     // Init Process Control Blocks |•'-'•) ✧
     init_pcb(shellptr,0,NULL); //只初始化shell进程
-    //此处才完成了current runing 0/1的初始化
     printk("> [INIT] PCB initialization succeeded.\n");
 
     // Read CPU frequency (｡•ᴗ-)_
@@ -338,32 +325,22 @@ int main(void)
     smp_init();
     lock_kernel(); //只能有一个CPU访问内核空间,调度时再释放。
     wakeup_other_hart();
+    enable_preempt();
     // unlock_kernel();
     // while(1);
     }
     else{
         current_running_1 = &pid1_pcb;
-        //while(1);
         lock_kernel();
         
-        //while(1);
         current_running = current_running_1;
         setup_exception();
-        // printk("cpu 1 is start\n");
-             enable_preempt();
-    // //在此设置第一个定时器中断，以激发第一次调度
-    // set_timer(get_ticks()+TIMER_INTERVAL);
-        // unlock_kernel();
-        // while(1);
     }
 
     // TODO: [p2-task4] Setup timer interrupt and enable all interrupt globally
     // NOTE: The function of sstatus.sie is different from sie's
     
-    //enable_preempt();
-    //在此设置第一个定时器中断，以激发第一次调度
-    //set_timer(get_ticks()+TIMER_INTERVAL);
-    // Infinite while loop, where CPU stays in a low-power state (QAQQQQQQQQQQQ)
+    //考虑到可能下一次进程需要多次寻找，将从pcb0/1到其余进程的时钟设置放置在do_scheduler中
     while (1)
     {
         // If you do non-preemptive scheduling, it's used to surrender control
@@ -371,8 +348,7 @@ int main(void)
 
         // If you do preemptive scheduling, they're used to enable CSR_SIE and wfi
         do_scheduler();
-        //set_timer(get_ticks()+TIMER_INTERVAL);
-        //asm volatile("wfi");
+        //由于未经过ret_from_exception，需要允许其他核抢到锁
         unlock_kernel();
         lock_kernel();
     }

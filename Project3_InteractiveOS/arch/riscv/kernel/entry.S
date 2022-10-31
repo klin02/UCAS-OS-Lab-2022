@@ -167,22 +167,6 @@ ENDPROC(enable_sw_interrupt)
 // NOTE: the address of previous pcb in a0
 // NOTE: the address of next pcb in a1
 ENTRY(switch_to)
-  # addi sp, sp, -(SWITCH_TO_SIZE)
-  # sd  ra,   SWITCH_TO_RA(sp)
-  # sd  sp,   SWITCH_TO_SP(sp)
-  # sd  s0,   SWITCH_TO_S0(sp)
-  # sd  s1,   SWITCH_TO_S1(sp)
-  # sd  s2,   SWITCH_TO_S2(sp)
-  # sd  s3,   SWITCH_TO_S3(sp)
-  # sd  s4,   SWITCH_TO_S4(sp)
-  # sd  s5,   SWITCH_TO_S5(sp)
-  # sd  s6,   SWITCH_TO_S6(sp)
-  # sd  s7,   SWITCH_TO_S7(sp)
-  # sd  s8,   SWITCH_TO_S8(sp)
-  # sd  s9,   SWITCH_TO_S9(sp)
-  # sd  s10,  SWITCH_TO_S10(sp)
-  # sd  s11,  SWITCH_TO_S11(sp)
-  # sd  sp,   0(a0)
   /* TODO: [p2-task1] save all callee save registers on kernel stack,
    * see the definition of `struct switchto_context` in sched.h*/
   ld  t0,   PCB_KERNEL_SP(a0)
@@ -219,23 +203,6 @@ ENTRY(switch_to)
   ld  s10,  SWITCH_TO_S10(t0)
   ld  s11,  SWITCH_TO_S11(t0)
 
-  # ld  sp,   PCB_KERNEL_SP(a1)
-  # ld  ra,   SWITCH_TO_RA(sp)
-
-  # ld  s0,   SWITCH_TO_S0(sp)
-  # ld  s1,   SWITCH_TO_S1(sp)
-  # ld  s2,   SWITCH_TO_S2(sp)
-  # ld  s3,   SWITCH_TO_S3(sp)
-  # ld  s4,   SWITCH_TO_S4(sp)
-  # ld  s5,   SWITCH_TO_S5(sp)
-  # ld  s6,   SWITCH_TO_S6(sp)
-  # ld  s7,   SWITCH_TO_S7(sp)
-  # ld  s8,   SWITCH_TO_S8(sp)
-  # ld  s9,   SWITCH_TO_S9(sp)
-  # ld  s10,  SWITCH_TO_S10(sp)
-  # ld  s11,  SWITCH_TO_S11(sp)
-  # ld  sp,   SWITCH_TO_SP(sp)
-  # addi sp, sp, SWITCH_TO_SIZE
   move tp, a1  //保证此时cur_running 存至 tp
   jr ra
 ENDPROC(switch_to)

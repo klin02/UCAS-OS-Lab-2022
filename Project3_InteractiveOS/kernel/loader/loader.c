@@ -31,9 +31,6 @@ uint64_t load_task_img(int taskid)
     dest += tasks[taskid].size;
     bzero(dest,task_entry_offset);
 
-    // //call the task
-    // void (*func)(void) = (void *)task_mem_addr;
-    // func();
-    //asm volatile ("jalr %0" : : "r"(task_mem_addr));
+    // 不再直接跳转到用户程序
     return 0;
 }

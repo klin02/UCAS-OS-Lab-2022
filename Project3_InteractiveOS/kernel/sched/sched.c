@@ -50,15 +50,11 @@ pid_t process_id = 1;
 void do_scheduler(void)
 {
     // TODO: [p2-task3] Check sleep queue to wake up PCBs
-    //check_sleeping();
-    //printl("begin schedule\n");
     // TODO: [p2-task1] Modify the current_running pointer.
-    //将cur加入ready queue。同时从中拿出next
     int cpu_id = get_current_cpu_id();
     current_running = (cpu_id == 0) ? current_running_0 : current_running_1;
 
     pcb_t * next_running;
-    //考虑就绪队列中已经被杀死的进程：回收，重新取
     int isfirst=1;
     int changehead=1;
     int found=0; //找到合适的目标
@@ -94,20 +90,17 @@ void do_scheduler(void)
             break;
         }
     }
-    //就绪队列为空时，返回空，next需要指向自己
+    //就绪队列为空时，next_running指定为初始进程
     if(found==0) {
-        //对于用户进程，switch自己即可。
-        //如果持有的进程结束，而没有就绪进程。忙等，持有无效进程，等待有了再切换。
-        //对于初始进程，不可swith，也不可return
-            next_running = (cpu_id == 0) ? &pid0_pcb : &pid1_pcb;
-            pcb_t * last_running = current_running;
-            current_running = next_running;
-            if(cpu_id == 0){
-                current_running_0 = current_running;
-            }
-            else{
-                current_running_1 = current_running;
-            }
+        next_running = (cpu_id == 0) ? &pid0_pcb : &pid1_pcb;
+        pcb_t * last_running = current_running;
+        current_running = next_running;
+        if(cpu_id == 0){
+            current_running_0 = current_running;
+        }
+        else{
+            current_running_1 = current_running;
+        }
         if(last_running->status!=0 && last_running->status == TASK_EXITED)
             pcb_flag[last_running->pid-1] = 0; 
         else if(last_running->pid==0 || last_running->status == TASK_EXITED || last_running->status == TASK_BLOCKED)
@@ -145,8 +138,6 @@ void do_scheduler(void)
     else{
         current_running_1 = current_running;
     }
-    //unlock_kernel();
-    //局部变量，不担心改变
     switch_to(last_running,next_running);
 
 }
@@ -179,8 +170,6 @@ void do_unblock(list_node_t *pcb_node)
     if(pcb->status != TASK_EXITED)
         pcb->status = TASK_READY;
     enqueue(&ready_queue,pcb);
-    // if(pcb->pid == 4)
-    //     printl("unblock my\n");
 }
 
 void enqueue(list_head* queue,pcb_t* pnode){
@@ -223,20 +212,13 @@ void do_process_show(){
 
 
 pid_t do_exec(char *name, int argc, char *argv[]){
-    //printk("stophere;");
-    //printk("name:%s tasknum:%d\n",name,tasknum);
-    //printk("size:%d \n",sizeof(argv[0]));
     char *shellptr = "shell";
     if(strcmp(name,shellptr)==0){
         printk("shell exists.\n");
         return 0;
     }
     pid_t pid = init_pcb(name,argc,argv);
-    //do_scheduler();
-    //printk("pid=%d\n",pid);
     return pid; //不存在时返回0
-    //do_process_show();
-    //while(1);
 }
 
 void do_runmask(char *name, int argc, char *argv[],int mask){
@@ -252,7 +234,7 @@ void do_setmask(int pid,int mask){
     }
 }
 void pcb_recycle(pid_t pid){
-    //功能：对应用户栈和内核栈取消占用标记，pcb块取消占用标记，释放等待队列，将属于其的锁队列释放。调度
+    //功能：对应用户栈和内核栈取消占用标记，pcb块取消占用标记，释放等待队列，将属于其的锁队列和同步变量释放。调度
     //杀死子进程
     for(int i=0;i<NUM_MAX_TASK;i++){
         if(pcb_flag[i]==1 && pcb[i].ppid == pid)
@@ -299,7 +281,7 @@ void do_exit(void){
 }
 int do_kill(pid_t pid){
     //如果kill的是当前进程，则同exit一致。且此时无需关注返回值
-    //否则需要更改其状态，并在调度或者释放锁的时候进行相应处理
+    //否则需要更改其状态、回收资源，并在调度的时候取消PCB块占用
     //1.资源立即释放，防止过多占用PCB块。
         //e.g，子进程堵塞屏障中，父进程堵塞子进程等待队列。如果调度才释放，将持续占用PCB块
     //2.在调度时才更改标记，防止同时存在两个队列中
@@ -316,17 +298,13 @@ int do_kill(pid_t pid){
         return 0;
 }
 int do_waitpid(pid_t pid){
-    //printk("now %d\n",pcb_flag[pid-1]);
     if(pcb_flag[pid-1] == 1){
         do_block(&(current_running->list),&(pcb[pid-1].wait_queue));
-        //if(current_running->status == TASK_BLOCKED) return pid;
         do_scheduler();
         return pid;
     }
-    //return pid;
     else
     {
-        //printk("err\n");
         return 0;
     }
 }
