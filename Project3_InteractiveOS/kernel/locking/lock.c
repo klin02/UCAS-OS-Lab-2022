@@ -29,7 +29,7 @@ void init_locks(void)
         mlocks[i].lock.status = UNLOCKED;
         list_init(&(mlocks[i].block_queue));
         mlocks[i].key = i;
-        mlocks[i].owner_pid = 0;
+        mlocks[i].host_id = 0;
     }
     //支持多把锁
     // for(int i=0;i<TASK_MAXNUM;i++){
@@ -80,7 +80,7 @@ void do_mutex_lock_acquire(int mlock_idx)
     }
     else{
         mlocks[mlock_idx].lock.status = LOCKED;
-        mlocks[mlock_idx].owner_pid = current_running->pid;
+        mlocks[mlock_idx].host_id = current_running->pid;
         break;
     }
     }
@@ -96,7 +96,7 @@ void do_mutex_lock_release(int mlock_idx)
         do_unblock(&(tmp->list)); //改变状态及入队列
     }
     mlocks[mlock_idx].lock.status = UNLOCKED;
-    mlocks[mlock_idx].owner_pid = 0;
+    mlocks[mlock_idx].host_id = 0;
 }
 
 void init_barriers(void){
@@ -118,6 +118,7 @@ int do_barrier_init(int key, int goal){
         //相关量均已在destroy时重置
         barr[bar_idx].total_num = goal;
         barr[bar_idx].used = 1;
+        barr[bar_idx].host_id = current_running->pid;
         barr[bar_idx].wait_num =0;
         list_init(&barr[bar_idx].wait_queue);
         return bar_idx;
@@ -163,6 +164,7 @@ void do_barrier_destroy(int bar_idx){
                 barr[bar_idx].wait_num--;
             }
         barr[bar_idx].used=0;
+        barr[bar_idx].host_id =0;
     }
 }
 
@@ -181,6 +183,7 @@ int do_condition_init(int key){
     }
     else{
         cond[cid].used =1;
+        cond[cid].host_id = current_running->pid;
         return cid;
     }
 }
@@ -211,6 +214,7 @@ void do_condition_destroy(int cond_idx){
         do_unblock(&(tmp->list)); //改变状态及入队列
     }
     cond[cond_idx].used = 0;
+    cond[cond_idx].host_id = 0;
 }
 
 void init_mbox(){

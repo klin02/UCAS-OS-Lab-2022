@@ -158,6 +158,7 @@ pid_t init_pcb(char *name, int argc, char *argv[])
         isshell=1;
 
     int mask;
+    int ppid;
     //shell使用默认值，其余继承父值
     if(isshell==1){
     //初始化ready queue
@@ -165,9 +166,13 @@ pid_t init_pcb(char *name, int argc, char *argv[])
     //part2:初始化sleep queue
     list_init(&sleep_queue);     
     mask = 3;   
+    ppid = 0;
     }
-    else 
-    mask = current_running -> mask;
+    else{
+        mask = current_running -> mask;
+        ppid = current_running -> pid;
+    }
+    
     int task_id=-1;
     for(int j=0;j<tasknum;j++){
         if(strcmp(tasks[j].name,name)==0){
@@ -189,6 +194,7 @@ pid_t init_pcb(char *name, int argc, char *argv[])
     assert(hitid>=0);
     int pid=hitid+1;
     pcb[hitid].pid=pid;     //完成初始化后加1
+    pcb[hitid].ppid = ppid;
     //初始化主线程tid为-1
     pcb[hitid].tid=-1;
     pcb[hitid].wakeup_time = 0;

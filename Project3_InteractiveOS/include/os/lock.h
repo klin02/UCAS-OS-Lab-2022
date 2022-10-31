@@ -47,7 +47,7 @@ typedef struct mutex_lock
     spin_lock_t lock;
     list_head block_queue;
     int key;
-    int owner_pid;
+    int host_id;
 } mutex_lock_t;
 
 extern mutex_lock_t mlocks[LOCK_NUM];
@@ -80,6 +80,7 @@ typedef struct barrier
     int wait_num;
     list_head wait_queue;
     int used; 
+    int host_id;
 } barrier_t;
 
 #define BARRIER_NUM 16
@@ -95,6 +96,7 @@ typedef struct condition
     // TODO [P3-TASK2 condition]
     list_head wait_queue;
     int used;
+    int host_id;
 } condition_t;
 
 #define CONDITION_NUM 16

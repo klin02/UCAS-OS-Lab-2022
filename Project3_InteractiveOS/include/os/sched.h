@@ -78,7 +78,7 @@ typedef struct pcb
 
     /* process id */
     pid_t pid;
-
+    pid_t ppid;
     //thread id
     pid_t tid;
     //标记占用的tcb块，以便进行回收

@@ -82,7 +82,7 @@ void do_scheduler(void)
                 changehead=1; 
                 isfirst = 1;
             }
-            pcb_recycle(next_running->pid);
+            pcb_flag[next_running->pid-1]=0; // 取消占用标记
         } 
         else if(next_running->status == TASK_READY && next_running->mask!=3 && next_running->mask != cpu_id+1)//重新入队
         {
@@ -109,7 +109,7 @@ void do_scheduler(void)
                 current_running_1 = current_running;
             }
         if(last_running->status!=0 && last_running->status == TASK_EXITED)
-            pcb_recycle(last_running->pid); 
+            pcb_flag[last_running->pid-1] = 0; 
         else if(last_running->pid==0 || last_running->status == TASK_EXITED || last_running->status == TASK_BLOCKED)
             ;
         else
@@ -131,7 +131,7 @@ void do_scheduler(void)
     }
 
     if(current_running->status!=0 && current_running->status == TASK_EXITED)
-        pcb_recycle(current_running->pid);
+        pcb_flag[current_running->pid-1]=0;
     else if(current_running->pid != 0 && current_running->status != TASK_BLOCKED && current_running->status !=TASK_EXITED){//task1中只需考虑pcb0不回收，后续任务需要考虑状态
         current_running->status = TASK_READY;
         enqueue(&ready_queue,current_running);
@@ -210,7 +210,7 @@ void do_process_show(){
             coreid =1;
         else
             coreid =2;//illegal
-        printk("[%d] PID : %d  STATUS : ",i,pcb[i].pid);
+        printk("[%d] PID : %d PPID : %d STATUS : ",i,pcb[i].pid,pcb[i].ppid);
         switch(pcb[i].status){
             case TASK_BLOCKED: printk("BLOCKED mask:%d\n",pcb[i].mask); break;
             case TASK_RUNNING: printk("RUNNING mask:%d Running on Core %d\n",pcb[i].mask,coreid); break;
@@ -253,17 +253,20 @@ void do_setmask(int pid,int mask){
 }
 void pcb_recycle(pid_t pid){
     //功能：对应用户栈和内核栈取消占用标记，pcb块取消占用标记，释放等待队列，将属于其的锁队列释放。调度
+    //杀死子进程
+    for(int i=0;i<NUM_MAX_TASK;i++){
+        if(pcb_flag[i]==1 && pcb[i].ppid == pid)
+            do_kill(pcb[i].pid);
+    }
     //回收内存
     int Kernel_page_num = (pcb[pid-1].kernel_sp - FREEMEM_KERNEL) / PAGE_SIZE;
     int User_page_num = (pcb[pid-1].user_sp - FREEMEM_USER) / PAGE_SIZE;
     freeKernelPage(Kernel_page_num);
     freeUserPage(User_page_num);
-    //回收tcb块
-    pcb_flag[pid -1] = 0;
     //释放锁队列
     for(int i=0;i<LOCK_NUM;i++)
     {
-        if(mlocks[i].owner_pid == pid)
+        if(mlocks[i].host_id == pid)
             do_mutex_lock_release(i);
     }
     //释放等待队列
@@ -271,6 +274,16 @@ void pcb_recycle(pid_t pid){
         pcb_t * tmp = list_entry(pcb[pid-1].wait_queue.prev,pcb_t,list);
         dequeue(&(pcb[pid-1].wait_queue));
         do_unblock(&(tmp->list)); //改变状态及入队列
+    }
+    //释放创建的屏障
+    for(int i=0;i<BARRIER_NUM;i++){
+        if(barr[i].used == 1 && barr[i].host_id == pid)
+            do_barrier_destroy(i);
+    }
+    //释放创建的条件变量
+    for(int i=0;i<CONDITION_NUM;i++){
+        if(cond[i].used == 1 && cond[i].host_id == pid)
+            do_condition_destroy(i);
     }
     //释放占用信箱
     for(int i=0;i<pcb[pid-1].mbox_cnt;i++){
@@ -280,20 +293,23 @@ void pcb_recycle(pid_t pid){
 }
 void do_exit(void){
     pid_t pid = current_running->pid;
-    //pcb_recycle(pid);
+    pcb_recycle(pid);
     current_running->status = TASK_EXITED;
     do_scheduler();
 }
 int do_kill(pid_t pid){
     //如果kill的是当前进程，则同exit一致。且此时无需关注返回值
     //否则需要更改其状态，并在调度或者释放锁的时候进行相应处理
+    //1.资源立即释放，防止过多占用PCB块。
+        //e.g，子进程堵塞屏障中，父进程堵塞子进程等待队列。如果调度才释放，将持续占用PCB块
+    //2.在调度时才更改标记，防止同时存在两个队列中
     if(pid == current_running->pid){
         do_exit();
         return 1;
     }
     else if(pcb_flag[pid-1] == 1){
         pcb[pid-1].status = TASK_EXITED;
-        //pcb_recycle(pid);
+        pcb_recycle(pid);
         return 1;
     }
     else 
