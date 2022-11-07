@@ -2,15 +2,14 @@
  *            Copyright (C) 2018 Institute of Computing Technology, CAS
  *               Author : Han Shukai (email : hanshukai@ict.ac.cn)
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *  * * * * * * * * * * *
- *                                  Timer
+ * Display function related implementation, please read the relevant knowledge of VT100.
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *  * * * * * * * * * * *
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this
+ * software and associated documentation files (the "Software"), to deal in the Software
+ * without restriction, including without limitation the rights to use, copy, modify,
+ * merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit
+ * persons to whom the Software is furnished to do so, subject to the following conditions:
  *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
@@ -25,24 +24,25 @@
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *  * * * * * * * * * * */
 
-#ifndef INCLUDE_TIME_H_
-#define INCLUDE_TIME_H_
+#ifndef INCLUDE_CONSOLE_H_
+#define INCLUDE_CONSOLE_H_
 
-#include <type.h>
+/* configuring screen properties */
+void init_screen(void);
 
-//#define TIMER_INTERVAL 300000
-//#define TIMER_INTERVAL 150000
-//#define TIMER_INTERVAL 100000
-#define TIMER_INTERVAL 5000
+/* clear screen */
+void screen_clear(void);
 
-extern uint64_t time_base;
-extern uint64_t time_elapsed;
+/* reflush screen buffer */
+void screen_reflush(void);
 
-extern uint64_t get_timer(void);
-extern uint64_t get_ticks(void);
-extern uint64_t get_time_base(void);
-extern void latency(uint64_t time);
+/* screen write string */
+void screen_write(char *buff);
 
-extern void check_sleeping(void);
+/* move cursor int (x,y) */
+void screen_move_cursor(int x, int y);
+
+//新增：退格逻辑
+void screen_backspace(void);
 
 #endif

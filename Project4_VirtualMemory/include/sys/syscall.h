@@ -2,7 +2,7 @@
  *            Copyright (C) 2018 Institute of Computing Technology, CAS
  *               Author : Han Shukai (email : hanshukai@ict.ac.cn)
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *  * * * * * * * * * * *
- *                                  Timer
+ *                       System call related processing
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *  * * * * * * * * * * *
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,24 +25,16 @@
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *  * * * * * * * * * * */
 
-#ifndef INCLUDE_TIME_H_
-#define INCLUDE_TIME_H_
+#ifndef INCLUDE_SYSCALL_H_
+#define INCLUDE_SYSCALL_H_
 
+#include <os/sched.h>
 #include <type.h>
 
-//#define TIMER_INTERVAL 300000
-//#define TIMER_INTERVAL 150000
-//#define TIMER_INTERVAL 100000
-#define TIMER_INTERVAL 5000
+#define NUM_SYSCALLS 64
 
-extern uint64_t time_base;
-extern uint64_t time_elapsed;
-
-extern uint64_t get_timer(void);
-extern uint64_t get_ticks(void);
-extern uint64_t get_time_base(void);
-extern void latency(uint64_t time);
-
-extern void check_sleeping(void);
+/* syscall function pointer */
+extern long (*syscall[NUM_SYSCALLS])();
+extern void handle_syscall(regs_context_t *regs, uint64_t stval, uint64_t scause);
 
 #endif

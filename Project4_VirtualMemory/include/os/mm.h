@@ -1,8 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *  * * * * * * * * * * *
  *            Copyright (C) 2018 Institute of Computing Technology, CAS
- *               Author : Han Shukai (email : hanshukai@ict.ac.cn)
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *  * * * * * * * * * * *
- *                                  Timer
+ *                                   Memory Management
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *  * * * * * * * * * * *
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,25 +23,36 @@
  * THE SOFTWARE.
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *  * * * * * * * * * * */
-
-#ifndef INCLUDE_TIME_H_
-#define INCLUDE_TIME_H_
+#ifndef MM_H
+#define MM_H
 
 #include <type.h>
 
-//#define TIMER_INTERVAL 300000
-//#define TIMER_INTERVAL 150000
-//#define TIMER_INTERVAL 100000
-#define TIMER_INTERVAL 5000
+#define MEM_SIZE 32
+#define PAGE_SIZE 4096 // 4K 0x1000
+#define INIT_KERNEL_STACK_0 0x50500000
+#define INIT_KERNEL_STACK_1 0x50501000
+#define INIT_USER_STACK 0x52500000
+//最开始的一页被分配给了pcb0
+#define FREEMEM_KERNEL (INIT_KERNEL_STACK_1+PAGE_SIZE)
+#define FREEMEM_USER INIT_USER_STACK
 
-extern uint64_t time_base;
-extern uint64_t time_elapsed;
+/* Rounding; only works for n = power of two */
+#define ROUND(a, n)     (((((uint64_t)(a))+(n)-1)) & ~((n)-1))
+#define ROUNDDOWN(a, n) (((uint64_t)(a)) & ~((n)-1))
 
-extern uint64_t get_timer(void);
-extern uint64_t get_ticks(void);
-extern uint64_t get_time_base(void);
-extern void latency(uint64_t time);
+//为内存回收准备，设置可用页数
+#define MAXPAGE 32
+//可用列表，需要初始化
+//定义在mm.c中防止重复定义
+extern ptr_t KernelPage_Addr[MAXPAGE];
+extern char  KernelPage_Flag[MAXPAGE]; //0表示可用，1表示被占用
+extern ptr_t UserPage_Addr[MAXPAGE];
+extern char  UserPage_Flag[MAXPAGE];
 
-extern void check_sleeping(void);
-
-#endif
+extern ptr_t allocKernelPage(int numPage);
+extern ptr_t allocUserPage(int numPage);
+extern void  init_mm();
+extern void freeKernelPage(int page_num);
+extern void freeUserPage(int page_num);
+#endif /* MM_H */
