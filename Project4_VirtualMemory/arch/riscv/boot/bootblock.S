@@ -5,7 +5,7 @@
 .equ os_size_loc, 0x502001fc
 
 // kernel address (move kernel to here, and jmp here to start kernel)
-.equ kernel, 0x50201000
+.equ kernel, 0x50202000
 
 // BIOS function entry (jump here to use BIOS APIs)
 .equ bios_func_entry, 0x50150000
@@ -26,6 +26,7 @@ main:
     	// a0 is mhartid
 	bnez a0, secondary
 
+	# 此处默认usr info addr占据不会超过64个扇区，即32678B
 	// TODO: [p1-task4] load task-related arguments and pass them to kernel
 	li 	a0, BIOS_SDREAD
 	li 	a1, user_info_addr
@@ -35,8 +36,31 @@ main:
 	li 	a4, ignore
 	li 	a5, ignore
 	call 	bios_func_entry
-	
-	// then kernel info is reachable in memory
+
+	# 判断每次bios read不超过64
+	li 	t0, 64  	
+# 	# 每次存储64次个扇区后，内存地址后移
+# 	li 	t2, 32768
+# 	// then kernel info is reachable in memory
+# 	li 	a0, user_info_addr
+# 	lh 	a3, 0(a0)  //kernel_block_id
+# 	lh 	t1, 2(a0)  //kernel_block_num
+# 	li 	a0, BIOS_SDREAD
+# 	li 	a1, kernel
+# 	li 	a4, ignore
+# 	li 	a5, ignore	
+# kernel_sector_judge: #判断剩余扇区数是否小于64
+# 	blt 	t1, t0, kernel_sector_rest_load
+# 	li 	a2, 64
+# 	call 	bios_func_entry
+# 	add 	a1, a1, t2    # 512B x 64 sector
+# 	addi 	t1, t1, -64
+# 	addi 	a3, a3, 64 	 # 扇区号相应添加
+# 	j 	kernel_sector_judge
+# kernel_sector_rest_load:
+# 	addi 	a2, t1, 0
+# 	call 	bios_func_entry
+
 	li 	a0, user_info_addr
 	lh 	a3, 0(a0)  //kernel_block_id
 	lh 	a2, 2(a0)  //kernel_block_num
@@ -45,6 +69,7 @@ main:
 	li 	a4, ignore
 	li 	a5, ignore
 	call 	bios_func_entry
+	
 
 	// then kernel is in memory, need to be remove ahead by offset
 	li 	a0, kernel

@@ -27,32 +27,48 @@
 #define MM_H
 
 #include <type.h>
+#include <pgtable.h>
 
+#define MAP_KERNEL 1
+#define MAP_USER 2
 #define MEM_SIZE 32
-#define PAGE_SIZE 4096 // 4K 0x1000
-#define INIT_KERNEL_STACK_0 0x50500000
-#define INIT_KERNEL_STACK_1 0x50501000
-#define INIT_USER_STACK 0x52500000
-//最开始的一页被分配给了pcb0
+#define PAGE_SIZE 4096 // 4K
+#define INIT_KERNEL_STACK_0 0xffffffc052000000
+#define INIT_KERNEL_STACK_1 (INIT_KERNEL_STACK_0+PAGE_SIZE)
 #define FREEMEM_KERNEL (INIT_KERNEL_STACK_1+PAGE_SIZE)
-#define FREEMEM_USER INIT_USER_STACK
-
+#define FREEMEM_USER FREEMEM_KERNEL
 /* Rounding; only works for n = power of two */
 #define ROUND(a, n)     (((((uint64_t)(a))+(n)-1)) & ~((n)-1))
 #define ROUNDDOWN(a, n) (((uint64_t)(a)) & ~((n)-1))
 
-//为内存回收准备，设置可用页数
-#define MAXPAGE 32
-//可用列表，需要初始化
-//定义在mm.c中防止重复定义
-extern ptr_t KernelPage_Addr[MAXPAGE];
-extern char  KernelPage_Flag[MAXPAGE]; //0表示可用，1表示被占用
-extern ptr_t UserPage_Addr[MAXPAGE];
-extern char  UserPage_Flag[MAXPAGE];
+extern ptr_t allocPage(int numPage);
+// TODO [P4-task1] */
+void freePage(ptr_t baseAddr);
 
-extern ptr_t allocKernelPage(int numPage);
-extern ptr_t allocUserPage(int numPage);
-extern void  init_mm();
-extern void freeKernelPage(int page_num);
-extern void freeUserPage(int page_num);
+// #define S_CORE
+// NOTE: only need for S-core to alloc 2MB large page
+#ifdef S_CORE
+#define LARGE_PAGE_FREEMEM 0xffffffc056000000
+#define USER_STACK_ADDR 0x400000
+extern ptr_t allocLargePage(int numPage);
+#else
+// NOTE: A/C-core
+#define USER_STACK_ADDR 0xf00010000
+#endif
+
+// TODO [P4-task1] */
+extern void* kmalloc(size_t size);
+extern void share_pgtable(uintptr_t dest_pgdir, uintptr_t src_pgdir);
+extern uintptr_t alloc_page_helper(uintptr_t va, uintptr_t pgdir);
+
+// TODO [P4-task4]: shm_page_get/dt */
+uintptr_t shm_page_get(int key);
+void shm_page_dt(uintptr_t addr);
+
+//tmp 
+ ptr_t allocKernelPage(int numPage);
+ ptr_t allocUserPage(int numPage);
+ void freeKernelPage(int page_num);
+ void freeUserPage(int page_num);
+
 #endif /* MM_H */

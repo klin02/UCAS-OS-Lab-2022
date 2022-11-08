@@ -7,13 +7,14 @@
 #include <csr.h>
 
 /* maybe you need another stack for booting? */
+//此处无需两个栈,从核将停在bootblock等待主核初始化结束,因此可直接复用同一个栈
 .equ boot_stack_top_base, 0x50202000
 
 .section ".entry_function","ax"
 ENTRY(_boot)
   /*
    * this is the entrypoint of the kernel. 
-   * Don't clear BSS here
+   * Dont clear BSS here
    */
 
   /* Mask all interrupts */

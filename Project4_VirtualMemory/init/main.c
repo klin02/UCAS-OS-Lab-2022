@@ -46,14 +46,11 @@
 #include <os/thread.h>
 
 // 注意该地址应当与bootblock同步改变
-#define USER_INFO_ADDR 0x52400000
+#define USER_INFO_ADDR 0xffffffc052400000
 
 #define ARGV_OFFSET 64
 #define ARG_SIZE    128
 
-//规定测试任务启动顺序
-#define TASK_LIST_LEN 1
-char task_name_list[TASK_LIST_LEN][10] = {"shell"};
 char * shellptr = "shell";
 
 //以下均已在sched.c/sched.h声明
@@ -283,11 +280,12 @@ int main(void)
     current_running_0 = &pid0_pcb;
     current_running = current_running_0;
     // 新增：初始化可回收内存分配机制
-    init_mm();
+    // init_mm();
     
     // Init jump table provided by kernel and bios(ΦωΦ)
     init_jmptab();
-
+    printk("Enter main\n");
+    while(1);
     // Init task information (〃'▽'〃)
     init_task_info();
     

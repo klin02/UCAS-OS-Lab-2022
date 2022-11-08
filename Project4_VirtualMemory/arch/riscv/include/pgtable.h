@@ -70,48 +70,67 @@ static inline void set_satp(
 #define PPN_BITS 9lu
 #define NUM_PTE_ENTRY (1 << PPN_BITS)
 
+#define KVA_PA_OFFSET 0xffffffc000000000lu
 typedef uint64_t PTE;
 
 /* Translation between physical addr and kernel virtual addr */
 static inline uintptr_t kva2pa(uintptr_t kva)
 {
     /* TODO: [P4-task1] */
+    return kva - KVA_PA_OFFSET;
 }
 
 static inline uintptr_t pa2kva(uintptr_t pa)
 {
-    /* TODO: [P4-task1] */
+    /* TODO: [P4-task1] */\
+    return pa + KVA_PA_OFFSET;
 }
 
 /* get physical page addr from PTE 'entry' */
 static inline uint64_t get_pa(PTE entry)
 {
     /* TODO: [P4-task1] */
+    uint64_t mask = ((1lu << 54) - 1);
+    return ((entry & mask) >> 10) << 12;
 }
 
 /* Get/Set page frame number of the `entry` */
 static inline long get_pfn(PTE entry)
 {
     /* TODO: [P4-task1] */
+    //unsigned 类型 高位自动补零
+    uint64_t mask = ((1lu << 54) - 1);
+    return (entry & mask) >> 10;
+
+
 }
 static inline void set_pfn(PTE *entry, uint64_t pfn)
 {
     /* TODO: [P4-task1] */
+    //页表项最低十位为flags，其余44位为PPN
+    (*entry) = ((*entry) & 0x3ff) | (pfn << _PAGE_PFN_SHIFT);
 }
 
 /* Get/Set attribute(s) of the `entry` */
 static inline long get_attribute(PTE entry, uint64_t mask)
 {
     /* TODO: [P4-task1] */
+    return entry & mask;
 }
 static inline void set_attribute(PTE *entry, uint64_t bits)
 {
     /* TODO: [P4-task1] */
+    *entry |= bits;
 }
 
 static inline void clear_pgdir(uintptr_t pgdir_addr)
 {
     /* TODO: [P4-task1] */
+    uint64_t *pgdir = (uint64_t *)pgdir_addr;
+    //一页有512项
+    for (int i = 0; i < 512; i++)
+        pgdir[i] = 0;
+
 }
 
 /* 

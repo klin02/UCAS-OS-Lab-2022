@@ -6,8 +6,9 @@
 #include <asm.h>
 #include <csr.h>
 
-#define KERNEL_STACK_0		0x50500000
-#define KERNEL_STACK_1    0x50501000
+//取栈顶,由于其过大,加载需要使用ld
+#define KERNEL_STACK_0		0xffffffc052001000
+#define KERNEL_STACK_1    0xffffffc052002000
 
 ENTRY(_start)
   /* Mask all interrupts */
@@ -26,12 +27,12 @@ Clear_Bss:
   blt  a0, a1, Clear_Bss
 
   /* TODO: [p1-task2] setup C environment */
-  la    sp, KERNEL_STACK_0
+  ld    sp, pid0_stack
   call  main
   j     loop
 
 second_core:
-  la    sp, KERNEL_STACK_1
+  ld    sp, pid1_stack
   call  main
 
 loop:
