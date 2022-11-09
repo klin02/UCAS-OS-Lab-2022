@@ -14,7 +14,9 @@ ENTRY(_start)
   /* Mask all interrupts */
   csrw CSR_SIE, zero
   csrw CSR_SIP, zero
-
+  li t0, SR_SUM
+  csrs CSR_SSTATUS, t0
+  
   csrr a0, CSR_MHARTID
   bnez a0, second_core
   

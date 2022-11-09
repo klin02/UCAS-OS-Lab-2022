@@ -11,8 +11,10 @@
 typedef struct {
     int entry;
     int size;
+    int vaddr;
+    int memsz;
     char  name[20];
-} task_info_t; //18 byte
+} task_info_t; //36 byte
 
 extern short tasknum; //set for main.c and loader.c
 extern task_info_t tasks[TASK_MAXNUM];

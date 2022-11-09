@@ -10,21 +10,26 @@
 #include <screen.h>
 #include <printk.h>
 #include <assert.h>
+#include <pgtable.h>
 
 pcb_t pcb[NUM_MAX_TASK];
 int pcb_flag[NUM_MAX_TASK] = {0}; //标记占用情况，方便回收
+
+const ptr_t kernel_pgdir = PGDIR_PA + KVA_PA_OFFSET;
 const ptr_t pid0_stack = INIT_KERNEL_STACK_0 + PAGE_SIZE;
 pcb_t pid0_pcb = {
     .pid = 0,
     .kernel_sp = (ptr_t)pid0_stack,
-    .user_sp = (ptr_t)pid0_stack
+    .user_sp = (ptr_t)pid0_stack,
+    .pgdir = (ptr_t)kernel_pgdir
 };
 
 const ptr_t pid1_stack = INIT_KERNEL_STACK_1 + PAGE_SIZE;
 pcb_t pid1_pcb = {
     .pid = 0, //标记不回收
     .kernel_sp = (ptr_t)pid1_stack,
-    .user_sp = (ptr_t)pid1_stack
+    .user_sp = (ptr_t)pid1_stack,
+    .pgdir = (ptr_t)kernel_pgdir
 };
 
 LIST_HEAD(ready_queue);
@@ -51,6 +56,7 @@ void do_scheduler(void)
 {
     // TODO: [p2-task3] Check sleep queue to wake up PCBs
     // TODO: [p2-task1] Modify the current_running pointer.
+    printk("Enter do scheduler!\n");
     int cpu_id = get_current_cpu_id();
     current_running = (cpu_id == 0) ? current_running_0 : current_running_1;
 
@@ -110,6 +116,9 @@ void do_scheduler(void)
             last_running->status = TASK_READY;
             enqueue(&ready_queue,last_running);
         }
+        //MODE ASID VA(SHIFT)
+        set_satp(SATP_MODE_SV39, next_running->pid,kva2pa(next_running->pgdir) >> NORMAL_PAGE_SHIFT);
+        local_flush_tlb_all();
         switch_to(last_running,next_running);
         return;            
     }    
@@ -120,7 +129,7 @@ void do_scheduler(void)
     if(current_running->pid == 0)
     {
         //对于寻找到目标的初始进程，才可以设置定时器
-        set_timer(get_ticks()+TIMER_INTERVAL);
+        //set_timer(get_ticks()+TIMER_INTERVAL);
     }
 
     if(current_running->status!=0 && current_running->status == TASK_EXITED)
@@ -138,6 +147,9 @@ void do_scheduler(void)
     else{
         current_running_1 = current_running;
     }
+    //MODE ASID VA(SHIFT)
+    set_satp(SATP_MODE_SV39, next_running->pid, kva2pa(next_running->pgdir) >> NORMAL_PAGE_SHIFT);
+    local_flush_tlb_all();
     switch_to(last_running,next_running);
 
 }
@@ -241,10 +253,7 @@ void pcb_recycle(pid_t pid){
             do_kill(pcb[i].pid);
     }
     //回收内存
-    int Kernel_page_num = (pcb[pid-1].kernel_sp - FREEMEM_KERNEL) / PAGE_SIZE;
-    int User_page_num = (pcb[pid-1].user_sp - FREEMEM_USER) / PAGE_SIZE;
-    freeKernelPage(Kernel_page_num);
-    freeUserPage(User_page_num);
+    //freePage()
     //释放锁队列
     for(int i=0;i<LOCK_NUM;i++)
     {

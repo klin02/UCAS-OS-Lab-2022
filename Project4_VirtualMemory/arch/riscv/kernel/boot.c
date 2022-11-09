@@ -32,6 +32,7 @@ static void map_page(uint64_t va, uint64_t pa, PTE *pgdir)
     }
     PTE *pmd = (PTE *)get_pa(pgdir[vpn2]); //第一级页表的入口地址
     set_pfn(&pmd[vpn1], pa >> NORMAL_PAGE_SHIFT); //将第一级页表的表项记录物理页框地址
+    //设置为叶节点
     set_attribute(
         &pmd[vpn1], _PAGE_PRESENT | _PAGE_READ | _PAGE_WRITE |
                         _PAGE_EXEC | _PAGE_ACCESSED | _PAGE_DIRTY);

@@ -79,8 +79,8 @@ void thread_create(ptr_t funcaddr,void *arg,ptr_t rc_funcaddr){ // void *就是�
         tcb[thread_ptr].tid = tid;
         tcb[thread_ptr].tcb_num = thread_ptr;
         tcb[thread_ptr].wakeup_time = 0;
-        tcb[thread_ptr].kernel_sp = allocKernelPage(1)+PAGE_SIZE;
-        tcb[thread_ptr].user_sp = allocUserPage(1)+PAGE_SIZE;
+        tcb[thread_ptr].kernel_sp = allocPage(1)+PAGE_SIZE;
+        tcb[thread_ptr].user_sp = allocPage(1)+PAGE_SIZE;
         tcb[thread_ptr].status = TASK_READY;
         tcb[thread_ptr].lock_time = 0;
         //init reg on kernel stack
@@ -115,10 +115,10 @@ void thread_recycle(){
         //无需传参，主要参数可利用current_running传递
         //功能：对应用户栈和内核栈取消占用标记，tcb块取消占用标记，调度
         //回收内存
-        int Kernel_page_num = (current_running->kernel_sp - FREEMEM_KERNEL) / PAGE_SIZE;
-        int User_page_num = (current_running->user_sp - FREEMEM_USER) / PAGE_SIZE;
-        freeKernelPage(Kernel_page_num);
-        freeUserPage(User_page_num);
+        // int Kernel_page_num = (current_running->kernel_sp - FREEMEM_KERNEL) / PAGE_SIZE;
+        // int User_page_num = (current_running->user_sp - FREEMEM_USER) / PAGE_SIZE;
+        // freeKernelPage(Kernel_page_num);
+        // freeUserPage(User_page_num);
         //回收tcb块
         tcb_flag[current_running->tcb_num] = 0;
         //更新current状态即可复用do_scheduler

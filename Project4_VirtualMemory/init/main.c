@@ -96,10 +96,10 @@ static void init_task_info(void)
     unsigned char * ptr = (unsigned long *)USER_INFO_ADDR;
     ptr += 8;
     //tasknum is define in task.h
-    memcpy(&tasknum,ptr,2);
+    memcpy((unsigned char *)&tasknum,ptr,2);
     ptr += 2;
     for(int i=0;i<tasknum;i++){
-        memcpy(&tasks[i],ptr,sizeof(task_info_t));
+        memcpy((unsigned char *)&tasks[i],ptr,sizeof(task_info_t));
         ptr += sizeof(task_info_t);
     }
 }
@@ -129,7 +129,7 @@ void init_pcb_stack(
     pt_regs->sepc = entry_point;
     //根据讲义，需要初始化SPP(0)和SPIE(1)，分别表示之前特权级和使能状态
     //宏定义见csr.h
-    pt_regs->sstatus = SR_SPIE & ~SR_SPP;
+    pt_regs->sstatus = ( SR_SPIE & ~SR_SPP ) | SR_SUM;
     pt_regs->sbadaddr = 0;
     pt_regs->scause =0;
 
@@ -193,8 +193,18 @@ pid_t init_pcb(char *name, int argc, char *argv[])
     //初始化主线程tid为-1
     pcb[hitid].tid=-1;
     pcb[hitid].wakeup_time = 0;
-    pcb[hitid].kernel_sp = allocKernelPage(1)+PAGE_SIZE;   //alloc返回的是栈底，需要先移动到栈顶再填数据
-    pcb[hitid].user_sp = allocUserPage(1)+PAGE_SIZE;
+    pcb[hitid].pgdir = allocPage(1);
+    clear_pgdir(pcb[hitid].pgdir);
+    share_pgtable(pcb[hitid].pgdir,pa2kva(PGDIR_PA));
+    //注意：内核栈需要内核地址空间中占据页表。已在boot.c中完成映射
+    pcb[hitid].kernel_sp = allocPage(1)+PAGE_SIZE;  
+    //用户栈使用用户地址空间，相互独立
+    //注意不能正好处于下一页的页头
+    pcb[hitid].user_sp = USER_STACK_ADDR + PAGE_SIZE - 8;
+    //注意：当前usr_sp为栈顶，也即页表末尾，传入的应当为页表起始地址
+    alloc_page_helper(USER_STACK_ADDR, pcb[hitid].pgdir);
+
+    load_task_img(task_id,pcb[hitid].pgdir);
     list_init(&pcb[hitid].wait_queue);
     for(int i=0;i<MBOX_NUM;i++){
         pcb[hitid].mbox_arr[i]=0;
@@ -222,7 +232,7 @@ pid_t init_pcb(char *name, int argc, char *argv[])
     }
 
     //注意task.entry只是镜像中偏移，实际计算需要通过taskid
-    ptr_t task_entrypoint = TASK_MEM_BASE + task_id*TASK_SIZE;
+    ptr_t task_entrypoint = tasks[task_id].vaddr;
     init_pcb_stack(pcb[hitid].kernel_sp,pcb[hitid].user_sp,task_entrypoint,&pcb[hitid],argc,argv_base);
     pcb[hitid].status = TASK_READY;
     //为多锁准备
@@ -280,18 +290,13 @@ int main(void)
     current_running_0 = &pid0_pcb;
     current_running = current_running_0;
     // 新增：初始化可回收内存分配机制
-    // init_mm();
+    init_mm();
     
     // Init jump table provided by kernel and bios(ΦωΦ)
     init_jmptab();
     printk("Enter main\n");
-    while(1);
     // Init task information (〃'▽'〃)
     init_task_info();
-    
-    //加载全部程序
-    for(int i=0;i<tasknum;i++)
-        load_task_img(i);
     
     // Init Process Control Blocks |•'-'•) ✧
     init_pcb(shellptr,0,NULL); //只初始化shell进程
@@ -323,7 +328,7 @@ int main(void)
 
     smp_init();
     lock_kernel(); //只能有一个CPU访问内核空间,调度时再释放。
-    wakeup_other_hart();
+    //wakeup_other_hart();
     enable_preempt();
     // unlock_kernel();
     // while(1);

@@ -130,7 +130,6 @@ static inline void clear_pgdir(uintptr_t pgdir_addr)
     //一页有512项
     for (int i = 0; i < 512; i++)
         pgdir[i] = 0;
-
 }
 
 /* 

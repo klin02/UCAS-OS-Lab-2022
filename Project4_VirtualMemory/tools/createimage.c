@@ -23,8 +23,10 @@
 typedef struct {
     int entry;
     int size;
+    int vaddr;
+    int memsz;
     char  name[20];
-} task_info_t; //28 byte
+} task_info_t; //36 byte
 
 #define TASK_MAXNUM 32
 static task_info_t taskinfo[TASK_MAXNUM];
@@ -111,6 +113,7 @@ static void create_image(int nfiles, char *files[])
             taskinfo[taskidx].entry = cntaddr;
             taskinfo[taskidx].size = 0; //initial
             //taskinfo[taskidx].id = taskidx;
+            taskinfo[taskidx].memsz =0;
             printf("---id:%d entry:%x size:%x\n",taskidx,taskinfo[taskidx].entry,taskinfo[taskidx].size);
             strcpy(taskinfo[taskidx].name,*nfl);
         }
@@ -128,13 +131,19 @@ static void create_image(int nfiles, char *files[])
             /* read program header */
             read_phdr(&phdr, fp, ph, ehdr);
             //根据文件头获取程序数目，依次读取程序头
-
+            if(phdr.p_flags % 2 == 1) //LOAD type
+                printf("va: 0x%lx\n",phdr.p_vaddr);
+            else
+                continue;
             /* update nbytes_kernel */
             if (strcmp(*nfl, "main") == 0) {
                 nbytes_kernel += get_filesz(phdr);
             }
-            else if(taskidx>=0)
+            else if(taskidx>=0){
                 taskinfo[taskidx].size += get_filesz(phdr);
+                taskinfo[taskidx].vaddr = phdr.p_vaddr;
+                taskinfo[taskidx].memsz += phdr.p_memsz;
+            }
             //统计kernel(main)的实际大小，进而获得扇区数。用户程序数直接通过edr获得
             cntaddr += get_filesz(phdr);
         }
@@ -159,7 +168,11 @@ static void create_image(int nfiles, char *files[])
             /* read program header */
             read_phdr(&phdr, fp, ph, ehdr);
             //根据文件头获取程序数目，依次读取程序头
-
+            printf("flags: %d\n",phdr.p_flags);
+            if(phdr.p_flags % 2 == 1) //即可执行 LOAD type
+                printf("va: 0x%lx\n",phdr.p_vaddr);
+            else
+                continue;
             /* write segment to the image */
             write_segment(phdr, fp, img, &phyaddr);
             //phyaddr 写到img的地址 从0开始

@@ -36,14 +36,13 @@
 #define INIT_KERNEL_STACK_0 0xffffffc052000000
 #define INIT_KERNEL_STACK_1 (INIT_KERNEL_STACK_0+PAGE_SIZE)
 #define FREEMEM_KERNEL (INIT_KERNEL_STACK_1+PAGE_SIZE)
-#define FREEMEM_USER FREEMEM_KERNEL
 /* Rounding; only works for n = power of two */
 #define ROUND(a, n)     (((((uint64_t)(a))+(n)-1)) & ~((n)-1))
 #define ROUNDDOWN(a, n) (((uint64_t)(a)) & ~((n)-1))
 
 extern ptr_t allocPage(int numPage);
 // TODO [P4-task1] */
-void freePage(ptr_t baseAddr);
+extern void freePage(ptr_t baseAddr);
 
 // #define S_CORE
 // NOTE: only need for S-core to alloc 2MB large page
@@ -65,10 +64,9 @@ extern uintptr_t alloc_page_helper(uintptr_t va, uintptr_t pgdir);
 uintptr_t shm_page_get(int key);
 void shm_page_dt(uintptr_t addr);
 
-//tmp 
- ptr_t allocKernelPage(int numPage);
- ptr_t allocUserPage(int numPage);
- void freeKernelPage(int page_num);
- void freeUserPage(int page_num);
+#define MAXPAGE 256  //0x100
+extern ptr_t Page_Addr[MAXPAGE];
+extern char  Page_Flag[MAXPAGE]; //0表示可用，1表示被占用
 
+extern void init_mm();
 #endif /* MM_H */

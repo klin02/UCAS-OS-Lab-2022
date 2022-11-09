@@ -212,6 +212,10 @@ ENTRY(ret_from_exception)
   /* HINT: remember to check your sp, does it point to the right address? */
  call unlock_kernel
   RESTORE_CONTEXT
+
+  li t0, SR_SUM
+  csrs CSR_SSTATUS, t0
+
   sret
 ENDPROC(ret_from_exception)
 
@@ -219,10 +223,13 @@ ENTRY(exception_handler_entry)
 
   /* TODO: [p2-task3] save context via the provided macro */
   SAVE_CONTEXT
+
   /* TODO: [p2-task3] load ret_from_exception into $ra so that we can return to
    * ret_from_exception when interrupt_help complete.
    */
   
+  li t0, SR_SUM
+  csrs CSR_SSTATUS, t0
 
   /* TODO: [p2-task3] call interrupt_helper
    * NOTE: donnot forget to pass parameters for it.
