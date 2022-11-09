@@ -128,7 +128,10 @@ static void create_image(int nfiles, char *files[])
             /* read program header */
             read_phdr(&phdr, fp, ph, ehdr);
             //根据文件头获取程序数目，依次读取程序头
-
+            if(phdr.p_flags % 2 == 1) //LOAD type
+                printf("va: 0x%lx\n",phdr.p_vaddr);
+            else
+                continue;
             /* update nbytes_kernel */
             if (strcmp(*nfl, "main") == 0) {
                 nbytes_kernel += get_filesz(phdr);
@@ -159,7 +162,11 @@ static void create_image(int nfiles, char *files[])
             /* read program header */
             read_phdr(&phdr, fp, ph, ehdr);
             //根据文件头获取程序数目，依次读取程序头
-
+            printf("flags: %d\n",phdr.p_flags);
+            if(phdr.p_flags % 2 == 1) //即可执行 LOAD type
+                printf("va: 0x%lx\n",phdr.p_vaddr);
+            else
+                continue;
             /* write segment to the image */
             write_segment(phdr, fp, img, &phyaddr);
             //phyaddr 写到img的地址 从0开始
