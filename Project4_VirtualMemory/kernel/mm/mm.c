@@ -1,6 +1,7 @@
 #include <os/mm.h>
 #include <pgtable.h>
 #include <os/string.h>
+#include <os/sched.h>
 
 // NOTE: A/C-core
 static ptr_t kernMemCurr = FREEMEM_KERNEL;
@@ -16,7 +17,7 @@ void init_mm(){
     }
 }
 
-ptr_t allocPage(int numPage)
+ptr_t allocPage(int numPage,pcb_t *pcbptr)
 {
     // align PAGE_SIZE
     int flag=1;
@@ -32,6 +33,7 @@ ptr_t allocPage(int numPage)
         return 0; //无可用页，返回非法地址
     else{
         Page_Flag[hitnum]=1; //标记占用
+        pcbptr->pg_addr[pcbptr->pg_num++] = Page_Addr[hitnum];
         return Page_Addr[hitnum];
     }
 }
@@ -55,14 +57,14 @@ void share_pgtable(uintptr_t dest_pgdir, uintptr_t src_pgdir)
     // TODO [P4-task1] share_pgtable:
     //将内核页表赋值到用户页表当中，从而用户进程进入内核时不会产生缺页
     //事实上就是将内核页表的后半部分（0xfff开头）填入了用户页表对应位置，该过程需要在clear之后，设置程序页表之前
-    memcpy((char *)dest_pgdir,(char *)src_pgdir,PAGE_SIZE); 
+    memcpy((uint8_t *)dest_pgdir,(uint8_t *)src_pgdir,PAGE_SIZE); 
 }
 
 /* allocate physical page for `va`, mapping it into `pgdir`,
    return the kernel virtual address for the page
    */
 //为虚拟地址va在三级页表的页表目录pgdir中进行相应映射，最终返回映射地址对应的内核虚地址
-uintptr_t alloc_page_helper(uintptr_t va, uintptr_t pgdir)
+uintptr_t alloc_page_helper(uintptr_t va, uintptr_t pgdir,pcb_t *pcbptr)
 {
     // TODO [P4-task1] alloc_page_helper:
     va = va & VA_MASK;
@@ -81,7 +83,7 @@ uintptr_t alloc_page_helper(uintptr_t va, uintptr_t pgdir)
     ptr_t pgdir2_entry = ((PTE *)pgdir)[vpn2];
     valid2 = pgdir2_entry & _PAGE_PRESENT;
     if(valid2 == 0){
-        pgdir1 = allocPage(1);
+        pgdir1 = allocPage(1,pcbptr);
         pgdir1_ppn = (kva2pa(pgdir1)>>NORMAL_PAGE_SHIFT)<<_PAGE_PFN_SHIFT;
         set_attribute((PTE *)pgdir+vpn2,pgdir1_ppn | bit_21);
     }
@@ -92,7 +94,7 @@ uintptr_t alloc_page_helper(uintptr_t va, uintptr_t pgdir)
     ptr_t pgdir1_entry = ((PTE *)pgdir1)[vpn1];
     valid1 = pgdir1_entry & _PAGE_PRESENT;
     if(valid1 == 0){
-        pgdir0 = allocPage(1);
+        pgdir0 = allocPage(1,pcbptr);
         pgdir0_ppn = (kva2pa(pgdir0)>>NORMAL_PAGE_SHIFT)<<_PAGE_PFN_SHIFT;
         set_attribute((PTE *)pgdir1+vpn1,pgdir0_ppn | bit_21);
     }
@@ -103,7 +105,7 @@ uintptr_t alloc_page_helper(uintptr_t va, uintptr_t pgdir)
     ptr_t pgdir0_entry = ((PTE *)pgdir0)[vpn0];
     valid0 = pgdir0_entry & _PAGE_PRESENT;
     if(valid0 == 0){
-        pg_vpa = allocPage(1);
+        pg_vpa = allocPage(1,pcbptr);
         pg_pa = (kva2pa(pg_vpa)>>NORMAL_PAGE_SHIFT)<<_PAGE_PFN_SHIFT;
         set_attribute((PTE *)pgdir0+vpn0,pg_pa | bit_0);
     }

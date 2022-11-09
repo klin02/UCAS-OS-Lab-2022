@@ -6,7 +6,7 @@
 
 #define SECTOR_SIZE 512
 
-uint64_t load_task_img(int taskid,ptr_t pgdir)
+uint64_t load_task_img(int taskid,ptr_t pgdir,pcb_t *pcbptr)
 {//P2更改：不跳转，只加载，依赖库由bios改为kernel
     /**
      * TODO:
@@ -24,10 +24,12 @@ uint64_t load_task_img(int taskid,ptr_t pgdir)
     int rest_block = task_block_num; //剩余未加载的扇区数
     ptr_t cur_va = tasks[taskid].vaddr; //当前要加载到的用户虚拟地址
     ptr_t kva[16]; //映射到的内核虚地址,为了实现跨页对齐，都需要保存
+    for(int i=0;i<16;i++)
+        kva[i]=0;
     int kva_ptr = 0;
     //由于要求4KB页，一次只能加载8个扇区，地址间隔为0x1000
     while(rest_block > 8){
-        kva[kva_ptr] = alloc_page_helper(cur_va,pgdir);
+        kva[kva_ptr] = alloc_page_helper(cur_va,pgdir,pcbptr);
         bios_sdread(kva[kva_ptr],8,cur_block);
         cur_block += 8;
         rest_block -=8;
@@ -35,7 +37,7 @@ uint64_t load_task_img(int taskid,ptr_t pgdir)
         kva_ptr++;
     }
     if(rest_block!=0){ //不是正好整页，额外操作一次
-        kva[kva_ptr] = alloc_page_helper(cur_va,pgdir);
+        kva[kva_ptr] = alloc_page_helper(cur_va,pgdir,pcbptr);
         bios_sdread(kva[kva_ptr],rest_block,cur_block);
         cur_va += PAGE_SIZE;
         kva_ptr++;
@@ -68,7 +70,7 @@ uint64_t load_task_img(int taskid,ptr_t pgdir)
         int rest_pg = mem_pg - kva_ptr;
         while(rest_pg > 0)
         {
-            kva[kva_ptr++] = alloc_page_helper(cur_va,pgdir);
+            kva[kva_ptr++] = alloc_page_helper(cur_va,pgdir,pcbptr);
             bzero((unsigned char *)kva[kva_ptr-1],PAGE_SIZE); //新增页均为空
             rest_pg -- ;
             cur_va += PAGE_SIZE;

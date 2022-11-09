@@ -192,19 +192,25 @@ pid_t init_pcb(char *name, int argc, char *argv[])
     pcb[hitid].ppid = ppid;
     //初始化主线程tid为-1
     pcb[hitid].tid=-1;
+    //初始化页数组
+    pcb[hitid].pg_num = 0;
+    for(int i=0;i<128;i++)
+        pcb[hitid].pg_addr[i] = 0;
     pcb[hitid].wakeup_time = 0;
-    pcb[hitid].pgdir = allocPage(1);
+    pcb[hitid].pgdir = allocPage(1,&pcb[hitid]);
     clear_pgdir(pcb[hitid].pgdir);
     share_pgtable(pcb[hitid].pgdir,pa2kva(PGDIR_PA));
     //注意：内核栈需要内核地址空间中占据页表。已在boot.c中完成映射
-    pcb[hitid].kernel_sp = allocPage(1)+PAGE_SIZE;  
+    pcb[hitid].kernel_stack_base = allocPage(1,&pcb[hitid]);
+    pcb[hitid].kernel_sp = pcb[hitid].kernel_stack_base + PAGE_SIZE - 8;  
     //用户栈使用用户地址空间，相互独立
     //注意不能正好处于下一页的页头
-    pcb[hitid].user_sp = USER_STACK_ADDR + PAGE_SIZE - 8;
+    pcb[hitid].user_stack_base = USER_STACK_ADDR;
+    pcb[hitid].user_sp = pcb[hitid].user_stack_base + PAGE_SIZE - 8;
     //注意：当前usr_sp为栈顶，也即页表末尾，传入的应当为页表起始地址
-    alloc_page_helper(USER_STACK_ADDR, pcb[hitid].pgdir);
+    alloc_page_helper(USER_STACK_ADDR, pcb[hitid].pgdir,&pcb[hitid]);
 
-    load_task_img(task_id,pcb[hitid].pgdir);
+    load_task_img(task_id,pcb[hitid].pgdir,&pcb[hitid]);
     list_init(&pcb[hitid].wait_queue);
     for(int i=0;i<MBOX_NUM;i++){
         pcb[hitid].mbox_arr[i]=0;
@@ -288,6 +294,7 @@ int main(void)
     if(get_current_cpu_id() == 0)
     {
     current_running_0 = &pid0_pcb;
+    current_running_1 = &pid1_pcb;
     current_running = current_running_0;
     // 新增：初始化可回收内存分配机制
     init_mm();
@@ -329,12 +336,11 @@ int main(void)
     smp_init();
     lock_kernel(); //只能有一个CPU访问内核空间,调度时再释放。
     //wakeup_other_hart();
-    enable_preempt();
+    //enable_preempt();
     // unlock_kernel();
     // while(1);
     }
     else{
-        current_running_1 = &pid1_pcb;
         lock_kernel();
         
         current_running = current_running_1;

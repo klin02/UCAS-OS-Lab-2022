@@ -115,7 +115,8 @@ int main(void)
         else if(cmdbuf[0]=='\0') ;                      //允许直接换行
         else   printf("Error: Unknown Command %s\n",cmdbuf); 
         //printf("%s %s\n",cmdbuf,filebuf);
-        // TODO [P3-task1]: ps, exec, kill, clear        
+        // TODO [P3-task1]: ps, exec, kill, clear 
+        //sys_yield();       
     }
 
     return 0;

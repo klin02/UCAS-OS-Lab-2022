@@ -79,8 +79,8 @@ void thread_create(ptr_t funcaddr,void *arg,ptr_t rc_funcaddr){ // void *就是�
         tcb[thread_ptr].tid = tid;
         tcb[thread_ptr].tcb_num = thread_ptr;
         tcb[thread_ptr].wakeup_time = 0;
-        tcb[thread_ptr].kernel_sp = allocPage(1)+PAGE_SIZE;
-        tcb[thread_ptr].user_sp = allocPage(1)+PAGE_SIZE;
+        tcb[thread_ptr].kernel_sp = allocPage(1,&tcb[thread_ptr])+PAGE_SIZE;
+        tcb[thread_ptr].user_sp = allocPage(1,&tcb[thread_ptr])+PAGE_SIZE;
         tcb[thread_ptr].status = TASK_READY;
         tcb[thread_ptr].lock_time = 0;
         //init reg on kernel stack

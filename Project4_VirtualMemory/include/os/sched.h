@@ -74,7 +74,8 @@ typedef struct pcb
     /* previous, next pointer */
     //其中包含了指向前一个和后一个的指针
     list_node_t list;
-    list_head wait_list;
+    //等待该进程结束的队列
+    list_head wait_queue;
 
     /* pgdir */
     uintptr_t pgdir;
@@ -100,14 +101,15 @@ typedef struct pcb
     //为多锁状态进程公平获取锁准备，获取次数越多，优先级越低。需初始化
     int lock_time;
 
-    //等待该进程结束的队列
-    list_head wait_queue;
-
     //占用的信箱
     int mbox_arr[MBOX_NUM];
     int mbox_cnt;
 
     int mask;
+
+    //为该进程独自分配的页：页头地址数组
+    int pg_num;
+    ptr_t pg_addr[128];
 } pcb_t;
 
 /* ready queue to run */

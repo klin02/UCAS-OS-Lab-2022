@@ -56,7 +56,7 @@ void do_scheduler(void)
 {
     // TODO: [p2-task3] Check sleep queue to wake up PCBs
     // TODO: [p2-task1] Modify the current_running pointer.
-    printk("Enter do scheduler!\n");
+    // printk("Enter do scheduler!\n");
     int cpu_id = get_current_cpu_id();
     current_running = (cpu_id == 0) ? current_running_0 : current_running_1;
 
@@ -116,9 +116,10 @@ void do_scheduler(void)
             last_running->status = TASK_READY;
             enqueue(&ready_queue,last_running);
         }
+        //切回内核空泡进程时不需切换页表，因为已经拷贝完成
         //MODE ASID VA(SHIFT)
-        set_satp(SATP_MODE_SV39, next_running->pid,kva2pa(next_running->pgdir) >> NORMAL_PAGE_SHIFT);
-        local_flush_tlb_all();
+        // set_satp(SATP_MODE_SV39, next_running->pid,kva2pa(next_running->pgdir) >> NORMAL_PAGE_SHIFT);
+        // local_flush_tlb_all();
         switch_to(last_running,next_running);
         return;            
     }    
@@ -129,7 +130,7 @@ void do_scheduler(void)
     if(current_running->pid == 0)
     {
         //对于寻找到目标的初始进程，才可以设置定时器
-        //set_timer(get_ticks()+TIMER_INTERVAL);
+        set_timer(get_ticks()+TIMER_INTERVAL);
     }
 
     if(current_running->status!=0 && current_running->status == TASK_EXITED)
@@ -252,8 +253,6 @@ void pcb_recycle(pid_t pid){
         if(pcb_flag[i]==1 && pcb[i].ppid == pid)
             do_kill(pcb[i].pid);
     }
-    //回收内存
-    //freePage()
     //释放锁队列
     for(int i=0;i<LOCK_NUM;i++)
     {
@@ -281,6 +280,10 @@ void pcb_recycle(pid_t pid){
         do_mbox_close(pcb[pid-1].mbox_arr[i]);
     }
     pcb[pid-1].mbox_cnt =0;
+    //释放占用的物理页
+    for(int i=0;i<pcb[pid-1].pg_num;i++)
+        freePage(pcb[pid-1].pg_addr[i]);
+    pcb[pid-1].pg_num = 0;
 }
 void do_exit(void){
     pid_t pid = current_running->pid;
