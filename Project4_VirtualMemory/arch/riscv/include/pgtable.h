@@ -34,6 +34,18 @@ static inline void local_flush_icache_all(void)
     asm volatile ("fence.i" ::: "memory");
 }
 
+static inline void local_flush_cache_all(void)
+{
+    asm volatile ("fence" ::: "memory");
+}
+
+static inline void flush_all(void)
+{
+    local_flush_icache_all();
+    local_flush_cache_all();
+    local_flush_tlb_all();
+}
+
 static inline void set_satp(
     unsigned mode, unsigned asid, unsigned long ppn)
 {

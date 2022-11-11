@@ -52,7 +52,7 @@
 #define ARG_SIZE    128
 
 char * shellptr = "shell";
-
+char * idleptr = "idle";
 //以下均已在sched.c/sched.h声明
 // /* current running task PCB */
 // extern pcb_t * volatile current_running;
@@ -151,7 +151,6 @@ pid_t init_pcb(char *name, int argc, char *argv[])
     int isshell=0;
     if(strcmp(name,shellptr)==0)
         isshell=1;
-
     int mask;
     int ppid;
     //shell使用默认值，其余继承父值
@@ -175,6 +174,7 @@ pid_t init_pcb(char *name, int argc, char *argv[])
             break;
         }
     }
+
     if(task_id == -1)
         return 0; //不存在该任务，直接返回0（非法）
     int hitid=-1;
@@ -202,11 +202,11 @@ pid_t init_pcb(char *name, int argc, char *argv[])
     share_pgtable(pcb[hitid].pgdir,pa2kva(PGDIR_PA));
     //注意：内核栈需要内核地址空间中占据页表。已在boot.c中完成映射
     pcb[hitid].kernel_stack_base = allocPage(1,&pcb[hitid]);
-    pcb[hitid].kernel_sp = pcb[hitid].kernel_stack_base + PAGE_SIZE - 8;  
+    pcb[hitid].kernel_sp = pcb[hitid].kernel_stack_base + PAGE_SIZE - 128;  
     //用户栈使用用户地址空间，相互独立
     //注意不能正好处于下一页的页头
     pcb[hitid].user_stack_base = USER_STACK_ADDR;
-    pcb[hitid].user_sp = pcb[hitid].user_stack_base + PAGE_SIZE - 8;
+    pcb[hitid].user_sp = pcb[hitid].user_stack_base + PAGE_SIZE - 128;
     //注意：当前usr_sp为栈顶，也即页表末尾，传入的应当为页表起始地址
     alloc_page_helper(USER_STACK_ADDR, pcb[hitid].pgdir,&pcb[hitid]);
 
@@ -245,6 +245,41 @@ pid_t init_pcb(char *name, int argc, char *argv[])
     pcb[hitid].lock_time = 0;
     enqueue(&ready_queue,&pcb[hitid]);
     return pid;
+}
+
+void init_idle_pcb(){
+    int idle_id=-1;
+    for(int i=0;i<tasknum;i++){
+        if(strcmp(tasks[i].name,idleptr)==0){
+            idle_id = i;
+            break;
+        }
+    }
+    for(int i=0;i<2;i++)
+    {
+        idle_pcb[i].pid=0;
+        idle_pcb[i].pg_num = 0;
+        for(int j=0;j<128;j++)
+            idle_pcb[i].pg_addr[j] = 0;
+        idle_pcb[i].pgdir = allocPage(1,&idle_pcb[i]);
+        clear_pgdir(idle_pcb[i].pgdir);
+        share_pgtable(idle_pcb[i].pgdir,pa2kva(PGDIR_PA));
+        //注意：内核栈需要内核地址空间中占据页表。已在boot.c中完成映射
+        idle_pcb[i].kernel_stack_base = allocPage(1,&idle_pcb[i]);
+        idle_pcb[i].kernel_sp = idle_pcb[i].kernel_stack_base + PAGE_SIZE - 128;  
+        //用户栈使用用户地址空间，相互独立
+        //注意不能正好处于下一页的页头
+        idle_pcb[i].user_stack_base = USER_STACK_ADDR;
+        idle_pcb[i].user_sp = idle_pcb[i].user_stack_base + PAGE_SIZE - 128;
+        //注意：当前usr_sp为栈顶，也即页表末尾，传入的应当为页表起始地址
+        alloc_page_helper(USER_STACK_ADDR, idle_pcb[i].pgdir,&idle_pcb[i]);
+
+        load_task_img(idle_id,idle_pcb[i].pgdir,&idle_pcb[i]);
+        ptr_t task_entrypoint = tasks[idle_id].vaddr;
+        init_pcb_stack(idle_pcb[i].kernel_sp,idle_pcb[i].user_sp,task_entrypoint,&idle_pcb[i],0,NULL);
+
+    }
+
 }
 
 static void init_syscall(void)
@@ -296,7 +331,8 @@ int main(void)
     current_running_0 = &pid0_pcb;
     current_running_1 = &pid1_pcb;
     current_running = current_running_0;
-    // 新增：初始化可回收内存分配机制
+
+        // 新增：初始化可回收内存分配机制
     init_mm();
     
     // Init jump table provided by kernel and bios(ΦωΦ)
@@ -307,6 +343,7 @@ int main(void)
     
     // Init Process Control Blocks |•'-'•) ✧
     init_pcb(shellptr,0,NULL); //只初始化shell进程
+    init_idle_pcb();
     printk("> [INIT] PCB initialization succeeded.\n");
 
     // Read CPU frequency (｡•ᴗ-)_
@@ -335,16 +372,22 @@ int main(void)
 
     smp_init();
     lock_kernel(); //只能有一个CPU访问内核空间,调度时再释放。
-    //wakeup_other_hart();
+    wakeup_other_hart();
+    unlock_kernel();
+    while(1);
     //enable_preempt();
     // unlock_kernel();
     // while(1);
     }
     else{
         lock_kernel();
-        
+        // unlock_kernel();
+        // while(1);
         current_running = current_running_1;
         setup_exception();
+        // do_scheduler();
+        // unlock_kernel();
+        // while(1);
     }
 
     // TODO: [p2-task4] Setup timer interrupt and enable all interrupt globally
@@ -357,10 +400,12 @@ int main(void)
         // do_scheduler();
 
         // If you do preemptive scheduling, they're used to enable CSR_SIE and wfi
+        //set_timer(get_ticks()+TIMER_INTERVAL);
         do_scheduler();
         //由于未经过ret_from_exception，需要允许其他核抢到锁
-        unlock_kernel();
-        lock_kernel();
+        // unlock_kernel();
+        // while(1);
+        // lock_kernel();
     }
 
     return 0;

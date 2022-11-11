@@ -20,7 +20,7 @@ void interrupt_helper(regs_context_t *regs, uint64_t stval, uint64_t scause)
     // call corresponding handler by the value of `scause`
     //相关定义见csr.h
     lock_kernel();
-    current_running = (get_current_cpu_id() ==0) ? current_running_0 : current_running_1;
+    current_running = (get_current_cpu_id() ==0) ? current_running_0 : current_running_1;           
     uint64_t type = scause & SCAUSE_IRQ_FLAG; //除最高位全零
     uint64_t code = scause & ~SCAUSE_IRQ_FLAG; //最高位为零
     if(type)
@@ -67,6 +67,7 @@ void handle_other(regs_context_t *regs, uint64_t stval, uint64_t scause)
         " s9  "," s10 "," s11 "," t3  "," t4  ",
         " t5  "," t6  "
     };
+    printk("Core %d\n\r",get_current_cpu_id());
     for (int i = 0; i < 32; i += 3) {
         for (int j = 0; j < 3 && i + j < 32; ++j) {
             printk("%s : %016lx ",reg_name[i+j], regs->regs[i+j]);

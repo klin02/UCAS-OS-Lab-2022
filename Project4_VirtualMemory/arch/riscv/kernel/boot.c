@@ -78,6 +78,11 @@ int boot_kernel(unsigned long mhartid)
     if (mhartid == 0) {
         setup_vm();
     } else {
+        // PTE *early_pgdir = (PTE *)PGDIR_PA;
+        // for (uint64_t pa = 0x50000000lu; pa < 0x51000000lu;
+        //  pa += 0x200000lu) {
+        // map_page(pa, pa, early_pgdir);
+        // }
         enable_vm();
     }
 

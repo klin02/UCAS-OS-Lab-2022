@@ -10,7 +10,7 @@ ENTRY(setup_exception)
 
   /* TODO: [p2-task4] enable interrupts globally */
   # 需要设置sie和sstatus
-  li t0, SR_SIE
+  li t0, SR_SIE | SR_SUM
   csrw CSR_SSTATUS,t0
 
   # 核间中断，时间中断，中断控制器中断

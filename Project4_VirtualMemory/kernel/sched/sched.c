@@ -31,6 +31,7 @@ pcb_t pid1_pcb = {
     .user_sp = (ptr_t)pid1_stack,
     .pgdir = (ptr_t)kernel_pgdir
 };
+pcb_t idle_pcb[2];
 
 LIST_HEAD(ready_queue);
 LIST_HEAD(sleep_queue);
@@ -98,7 +99,8 @@ void do_scheduler(void)
     }
     //就绪队列为空时，next_running指定为初始进程
     if(found==0) {
-        next_running = (cpu_id == 0) ? &pid0_pcb : &pid1_pcb;
+        //next_running = (cpu_id == 0) ? &idle_pcb[0] : &idle_pcb[1];
+         next_running = (cpu_id == 0) ? &pid0_pcb : &pid1_pcb;
         pcb_t * last_running = current_running;
         current_running = next_running;
         if(cpu_id == 0){
@@ -107,7 +109,7 @@ void do_scheduler(void)
         else{
             current_running_1 = current_running;
         }
-        if(last_running->status!=0 && last_running->status == TASK_EXITED)
+        if(last_running->pid!=0 && last_running->status == TASK_EXITED)
             pcb_flag[last_running->pid-1] = 0; 
         else if(last_running->pid==0 || last_running->status == TASK_EXITED || last_running->status == TASK_BLOCKED)
             ;
@@ -118,8 +120,26 @@ void do_scheduler(void)
         }
         //切回内核空泡进程时不需切换页表，因为已经拷贝完成
         //MODE ASID VA(SHIFT)
-        // set_satp(SATP_MODE_SV39, next_running->pid,kva2pa(next_running->pgdir) >> NORMAL_PAGE_SHIFT);
-        // local_flush_tlb_all();
+        //if(last_running -> pgdir != next_running->pgdir){
+        // if(cpu_id == 1)
+        // {
+        //     printk("Sub core here!\n");
+        //     while(1);
+        // }
+        set_satp(SATP_MODE_SV39, next_running->pid,kva2pa(next_running->pgdir) >> NORMAL_PAGE_SHIFT);
+        flush_all();            
+        //}
+    // if(cpu_id == 1)
+    //     {
+    //         // printk("Sub core here!\n");
+    //         // if(last_running!=next_running)
+    //         //     printk("neq!!\n");
+    //         return;
+    //         // unlock_kernel();
+    //         // while(1);
+    //     }
+        // if(last_running->pid == 0)
+        //     return;
         switch_to(last_running,next_running);
         return;            
     }    
@@ -127,13 +147,13 @@ void do_scheduler(void)
     pcb_t * last_running;
     last_running = current_running;
 
-    if(current_running->pid == 0)
-    {
-        //对于寻找到目标的初始进程，才可以设置定时器
-        set_timer(get_ticks()+TIMER_INTERVAL);
-    }
+    // if(current_running->pid == 0)
+    // {
+    //     //对于寻找到目标的初始进程，才可以设置定时器
+    //     set_timer(get_ticks()+TIMER_INTERVAL);
+    // }
 
-    if(current_running->status!=0 && current_running->status == TASK_EXITED)
+    if(current_running->pid!=0 && current_running->status == TASK_EXITED)
         pcb_flag[current_running->pid-1]=0;
     else if(current_running->pid != 0 && current_running->status != TASK_BLOCKED && current_running->status !=TASK_EXITED){//task1中只需考虑pcb0不回收，后续任务需要考虑状态
         current_running->status = TASK_READY;
@@ -149,8 +169,18 @@ void do_scheduler(void)
         current_running_1 = current_running;
     }
     //MODE ASID VA(SHIFT)
-    set_satp(SATP_MODE_SV39, next_running->pid, kva2pa(next_running->pgdir) >> NORMAL_PAGE_SHIFT);
-    local_flush_tlb_all();
+    //if(last_running -> pgdir != next_running->pgdir){
+        // if(cpu_id == 1)
+        // {
+        //     printk("Sub core here!\n");
+        //     while(1);
+        // }
+    // if(cpu_id == 1){
+    //     printk("Sub core set satp!\n");
+    // }
+    set_satp(SATP_MODE_SV39, next_running->pid,kva2pa(next_running->pgdir) >> NORMAL_PAGE_SHIFT);
+    flush_all();            
+    //alloc_page_helper(0x10000,next_running->pgdir,next_running);
     switch_to(last_running,next_running);
 
 }

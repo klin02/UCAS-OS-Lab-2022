@@ -77,7 +77,7 @@ uintptr_t alloc_page_helper(uintptr_t va, uintptr_t pgdir,pcb_t *pcbptr)
     ptr_t pgdir1_ppn,pgdir0_ppn,pg_pa;
     ptr_t valid2,valid1,valid0;
     //需要置起的flag位
-    ptr_t bit_21 = _PAGE_PRESENT | _PAGE_USER ;
+    ptr_t bit_21 = _PAGE_PRESENT | _PAGE_USER;
     ptr_t bit_0  = _PAGE_PRESENT |_PAGE_USER | _PAGE_READ | _PAGE_WRITE | _PAGE_EXEC | _PAGE_ACCESSED | _PAGE_DIRTY;
     //L2 中的页表项
     ptr_t pgdir2_entry = ((PTE *)pgdir)[vpn2];
@@ -114,6 +114,7 @@ uintptr_t alloc_page_helper(uintptr_t va, uintptr_t pgdir,pcb_t *pcbptr)
     }
     return pg_vpa;
 }
+
 
 uintptr_t shm_page_get(int key)
 {

@@ -116,7 +116,7 @@ int main(void)
         else   printf("Error: Unknown Command %s\n",cmdbuf); 
         //printf("%s %s\n",cmdbuf,filebuf);
         // TODO [P3-task1]: ps, exec, kill, clear 
-        //sys_yield();       
+        sys_yield();       
     }
 
     return 0;
