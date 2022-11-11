@@ -4,6 +4,8 @@
 #include <os/string.h>
 #include <os/kernel.h>
 #include <os/smp.h>
+#include <os/mm.h>
+#include <pgtable.h>
 #include <printk.h>
 #include <assert.h>
 #include <screen.h>
@@ -46,6 +48,8 @@ void init_exception()
     for(int i=0;i<EXCC_COUNT;i++)
         exc_table[i] = &handle_other;
     exc_table[EXCC_SYSCALL] = &handle_syscall;
+    exc_table[EXCC_LOAD_PAGE_FAULT] = &handle_ld_st_pagefault;
+    exc_table[EXCC_STORE_PAGE_FAULT] = &handle_ld_st_pagefault;
     /* TODO: [p2-task4] initialize irq_table */
     /* NOTE: handle_int, handle_other, etc.*/
     for(int i=0;i<IRQC_COUNT;i++)
@@ -54,6 +58,12 @@ void init_exception()
     /* TODO: [p2-task3] set up the entrypoint of exceptions */
     //调用汇编函数setup_exception 完成相关操作
     setup_exception();
+}
+
+void handle_ld_st_pagefault(regs_context_t *regs, uint64_t stval, uint64_t scause){
+    alloc_page_helper(stval,current_running->pgdir,current_running);
+    local_flush_tlb_all();
+    return;
 }
 
 void handle_other(regs_context_t *regs, uint64_t stval, uint64_t scause)

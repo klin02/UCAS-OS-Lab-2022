@@ -44,6 +44,7 @@
 #include <type.h>
 #include <csr.h>
 #include <os/thread.h>
+#include <pgtable.h>
 
 // 注意该地址应当与bootblock同步改变
 #define USER_INFO_ADDR 0xffffffc052400000
@@ -67,6 +68,13 @@ task_info_t tasks[TASK_MAXNUM];
 short tasknum;
 //新增入队列和出队列函数，方便队列维护
 //定义在sched.h中，实现在sched.c中
+
+static void cancel_tmp_map(){
+    PTE *early_pgdir = pa2kva(PGDIR_PA);
+    //0x50000000~0x51000000 vpn2均为1
+    clear_pgdir(pa2kva(get_pa(early_pgdir[1])));
+    early_pgdir[1] = 0;
+}
 
 static void init_jmptab(void)
 {
@@ -208,7 +216,7 @@ pid_t init_pcb(char *name, int argc, char *argv[])
     pcb[hitid].user_stack_base = USER_STACK_ADDR;
     pcb[hitid].user_sp = pcb[hitid].user_stack_base + PAGE_SIZE - 128;
     //注意：当前usr_sp为栈顶，也即页表末尾，传入的应当为页表起始地址
-    alloc_page_helper(USER_STACK_ADDR, pcb[hitid].pgdir,&pcb[hitid]);
+    ptr_t usr_sp_pg_kva = alloc_page_helper(USER_STACK_ADDR, pcb[hitid].pgdir,&pcb[hitid]);
 
     load_task_img(task_id,pcb[hitid].pgdir,&pcb[hitid]);
     list_init(&pcb[hitid].wait_queue);
@@ -217,29 +225,35 @@ pid_t init_pcb(char *name, int argc, char *argv[])
     }
     pcb[hitid].mbox_cnt =0;
     pcb[hitid].mask = mask;
-    char **argv_base;
+    char **argv_base_kva;
+    char **argv_base_uva;
     if(isshell==0)
     {
-        //参数排布
-        argv_base = (char **)(pcb[hitid].user_sp - ARGV_OFFSET);
-        char *strptr = (char *)argv_base;
-        char **argvptr= argv_base;
+        //参数排布——虚存模式
+        //尾缀kva为内核虚地址，用于拷贝
+        //uva为用户虚地址，用于记录
+        argv_base_kva = (char **)(usr_sp_pg_kva + PAGE_SIZE - 128 - ARGV_OFFSET);
+        argv_base_uva = (char **)(pcb[hitid].user_sp - ARGV_OFFSET);
+        char *strptr_kva = (char *)argv_base_kva;
+        char *strptr_uva = (char *)argv_base_uva;
+        char **argvptr= argv_base_kva;
         for(int i=0;i<argc;i++)
         {
-            strptr -= strlen(argv[i])+1;
-            strcpy(strptr,argv[i]);
-            *argvptr = strptr;
+            strptr_kva -= strlen(argv[i])+1;
+            strptr_uva -= strlen(argv[i])+1;
+            strcpy(strptr_kva,argv[i]);
+            *argvptr = strptr_uva;
             argvptr ++; //注意类型，这里每加1，内存位置偏移sizeof(char *)
         } 
         pcb[hitid].user_sp -= ARG_SIZE; //进行偏移，注意对齐
     }
     else{
-        argv_base = 0;
+        argv_base_uva = 0;
     }
 
     //注意task.entry只是镜像中偏移，实际计算需要通过taskid
     ptr_t task_entrypoint = tasks[task_id].vaddr;
-    init_pcb_stack(pcb[hitid].kernel_sp,pcb[hitid].user_sp,task_entrypoint,&pcb[hitid],argc,argv_base);
+    init_pcb_stack(pcb[hitid].kernel_sp,pcb[hitid].user_sp,task_entrypoint,&pcb[hitid],argc,argv_base_uva);
     pcb[hitid].status = TASK_READY;
     //为多锁准备
     pcb[hitid].lock_time = 0;
@@ -326,6 +340,7 @@ static void init_syscall(void)
 
 int main(void)
 {
+    cancel_tmp_map();
     if(get_current_cpu_id() == 0)
     {
     current_running_0 = &pid0_pcb;
