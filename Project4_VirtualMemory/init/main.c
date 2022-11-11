@@ -373,11 +373,9 @@ int main(void)
     smp_init();
     lock_kernel(); //只能有一个CPU访问内核空间,调度时再释放。
     wakeup_other_hart();
-    unlock_kernel();
-    while(1);
-    //enable_preempt();
     // unlock_kernel();
     // while(1);
+    //enable_preempt();
     }
     else{
         lock_kernel();
@@ -385,9 +383,6 @@ int main(void)
         // while(1);
         current_running = current_running_1;
         setup_exception();
-        // do_scheduler();
-        // unlock_kernel();
-        // while(1);
     }
 
     // TODO: [p2-task4] Setup timer interrupt and enable all interrupt globally
@@ -400,7 +395,7 @@ int main(void)
         // do_scheduler();
 
         // If you do preemptive scheduling, they're used to enable CSR_SIE and wfi
-        //set_timer(get_ticks()+TIMER_INTERVAL);
+        set_timer(get_ticks()+TIMER_INTERVAL);
         do_scheduler();
         //由于未经过ret_from_exception，需要允许其他核抢到锁
         // unlock_kernel();
