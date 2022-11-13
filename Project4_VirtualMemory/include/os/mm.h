@@ -41,7 +41,26 @@
 #define ROUND(a, n)     (((((uint64_t)(a))+(n)-1)) & ~((n)-1))
 #define ROUNDDOWN(a, n) (((uint64_t)(a)) & ~((n)-1))
 
-extern ptr_t allocPage(int numPage,pcb_t *pcbptr);
+typedef struct {
+        ptr_t addr;   //kva
+        char  valid;
+        // char  en_swap;  //标志能否换出
+        int   pid;
+        ptr_t vaddr;  //页对齐后，取掩码后的虚地址
+        PTE * ppte;   //映射到该页的页表项
+}Page_Node;
+
+typedef struct {
+        int   block_id;
+        char  valid;
+        // char  en_swap;  //标志能否换出
+        int   pid;
+        ptr_t vaddr;  //页对齐后，取掩码后的虚地址
+        PTE * ppte;   //映射到该页的页表项
+}Swap_Node;
+
+//mode：0 fix 1 port 可换出
+extern int allocPage(int numPage);
 // TODO [P4-task1] */
 extern void freePage(ptr_t baseAddr);
 
@@ -65,9 +84,21 @@ extern uintptr_t alloc_page_helper(uintptr_t va, uintptr_t pgdir,pcb_t *pcbptr);
 uintptr_t shm_page_get(int key);
 void shm_page_dt(uintptr_t addr);
 
-#define MAXPAGE 256  //0x100
-extern ptr_t Page_Addr[MAXPAGE];
-extern char  Page_Flag[MAXPAGE]; //0表示可用，1表示被占用
+#define MAXPAGE 512  //0x100
+// extern ptr_t Page_Addr[MAXPAGE];
+// extern char  Page_Flag[MAXPAGE]; //0表示可用，1表示被占用
 
+extern Page_Node ava_page[MAXPAGE];
+
+extern int port_page_list[MAXPAGE]; //可换出页的序号列表，FIFO逻辑管理
+extern int port_list_head;
+extern int port_list_tail;
+
+#define SWAP_PAGE 4096
+
+extern Swap_Node swap_page[SWAP_PAGE];
+
+#define SECTOR_SIZE 512
+extern int swap_block_offset;
 extern void init_mm();
 #endif /* MM_H */

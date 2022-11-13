@@ -27,6 +27,7 @@ static inline int ring_buffer_empty()
 }
 void ring_buffer_append(char ch)
 {
+    //满时等待，否则尾部填入一个ch
     while (ring_buffer_full());
 
     ring_buffer[ring_buffer_tail] = ch;
@@ -34,6 +35,7 @@ void ring_buffer_append(char ch)
 }
 char ring_buffer_pop()
 {
+    //空时等待，否则头部弹出一个ch
     while (ring_buffer_empty());
 
     char ret = ring_buffer[ring_buffer_head];
@@ -42,6 +44,7 @@ char ring_buffer_pop()
 }
 void get_str_from_ring_buffer(char* buf, int len)
 {
+    //从ring头部依次自尾向头填入
     buf[len] = '\0';
     while (len--) {
         buf[len] = ring_buffer_pop();
@@ -49,6 +52,7 @@ void get_str_from_ring_buffer(char* buf, int len)
 }
 void put_str_into_ring_buffer(char* buf, int len)
 {
+    //自头
     int i;
     for (i = 0; i < len; ++i) {
         ring_buffer_append(buf[i]);
@@ -89,6 +93,7 @@ void fill_mailbox_id(char my_id)
 
     strcpy(my_mailbox_id, mailbox_id_template);
     // replace '_' with `id`
+    //分别填入各个信箱内容
     my_mailbox_id[sizeof(mailbox_id_template) - 2] = my_id;
 
     for (id_i = 'a'; id_i < 'd'; ++id_i) {

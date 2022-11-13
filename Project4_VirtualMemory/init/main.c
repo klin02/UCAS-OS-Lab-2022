@@ -52,6 +52,8 @@
 #define ARGV_OFFSET 64
 #define ARG_SIZE    128
 
+int swap_block_offset;
+
 char * shellptr = "shell";
 char * idleptr = "idle";
 //以下均已在sched.c/sched.h声明
@@ -69,6 +71,15 @@ short tasknum;
 //新增入队列和出队列函数，方便队列维护
 //定义在sched.h中，实现在sched.c中
 
+static void test_swap_write(){
+    printk("Test swap write:\n");
+    for(int i=0;i<SWAP_PAGE;i++){
+        bios_sdwrite(0x52000000,8,swap_page[i].block_id);
+        if(i%8 == 0)
+            printk("%d ",i);
+    }
+
+}
 static void cancel_tmp_map(){
     PTE *early_pgdir = pa2kva(PGDIR_PA);
     //0x50000000~0x51000000 vpn2均为1
@@ -110,6 +121,7 @@ static void init_task_info(void)
         memcpy((unsigned char *)&tasks[i],ptr,sizeof(task_info_t));
         ptr += sizeof(task_info_t);
     }
+    swap_block_offset = (tasks[tasknum-1].entry + tasks[tasknum-1].size) / SECTOR_SIZE + 1;
 }
 
 
@@ -205,11 +217,11 @@ pid_t init_pcb(char *name, int argc, char *argv[])
     for(int i=0;i<128;i++)
         pcb[hitid].pg_addr[i] = 0;
     pcb[hitid].wakeup_time = 0;
-    pcb[hitid].pgdir = allocPage(1,&pcb[hitid]);
+    pcb[hitid].pgdir = ava_page[allocPage(1)].addr;
     clear_pgdir(pcb[hitid].pgdir);
     share_pgtable(pcb[hitid].pgdir,pa2kva(PGDIR_PA));
     //注意：内核栈需要内核地址空间中占据页表。已在boot.c中完成映射
-    pcb[hitid].kernel_stack_base = allocPage(1,&pcb[hitid]);
+    pcb[hitid].kernel_stack_base = ava_page[allocPage(1)].addr;
     pcb[hitid].kernel_sp = pcb[hitid].kernel_stack_base + PAGE_SIZE - 128;  
     //用户栈使用用户地址空间，相互独立
     //注意不能正好处于下一页的页头
@@ -275,11 +287,11 @@ void init_idle_pcb(){
         idle_pcb[i].pg_num = 0;
         for(int j=0;j<128;j++)
             idle_pcb[i].pg_addr[j] = 0;
-        idle_pcb[i].pgdir = allocPage(1,&idle_pcb[i]);
+        idle_pcb[i].pgdir = ava_page[allocPage(1)].addr;
         clear_pgdir(idle_pcb[i].pgdir);
         share_pgtable(idle_pcb[i].pgdir,pa2kva(PGDIR_PA));
         //注意：内核栈需要内核地址空间中占据页表。已在boot.c中完成映射
-        idle_pcb[i].kernel_stack_base = allocPage(1,&idle_pcb[i]);
+        idle_pcb[i].kernel_stack_base = ava_page[allocPage(1)].addr;
         idle_pcb[i].kernel_sp = idle_pcb[i].kernel_stack_base + PAGE_SIZE - 128;  
         //用户栈使用用户地址空间，相互独立
         //注意不能正好处于下一页的页头
@@ -347,15 +359,17 @@ int main(void)
     current_running_1 = &pid1_pcb;
     current_running = current_running_0;
 
-        // 新增：初始化可回收内存分配机制
-    init_mm();
-    
     // Init jump table provided by kernel and bios(ΦωΦ)
     init_jmptab();
     printk("Enter main\n");
     // Init task information (〃'▽'〃)
     init_task_info();
-    
+
+    // 新增：初始化可回收内存分配机制
+    init_mm();//为获取镜像扇区数 需要在task info后完成
+
+    // test_swap_write();
+
     // Init Process Control Blocks |•'-'•) ✧
     init_pcb(shellptr,0,NULL); //只初始化shell进程
     init_idle_pcb();
@@ -385,6 +399,9 @@ int main(void)
     init_screen();
     printk("> [INIT] SCREEN initialization succeeded.\n");
 
+    // bios_sdwrite(0x50200000,8,32915);
+    // printk("Try bios success!\n");
+    // while(1);
     smp_init();
     lock_kernel(); //只能有一个CPU访问内核空间,调度时再释放。
     wakeup_other_hart();

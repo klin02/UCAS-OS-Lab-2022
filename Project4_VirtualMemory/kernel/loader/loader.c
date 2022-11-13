@@ -4,7 +4,6 @@
 #include <os/mm.h>
 #include <type.h>
 
-#define SECTOR_SIZE 512
 
 uint64_t load_task_img(int taskid,ptr_t pgdir,pcb_t *pcbptr)
 {//P2更改：不跳转，只加载，依赖库由bios改为kernel
@@ -30,7 +29,7 @@ uint64_t load_task_img(int taskid,ptr_t pgdir,pcb_t *pcbptr)
     //由于要求4KB页，一次只能加载8个扇区，地址间隔为0x1000
     while(rest_block > 8){
         kva[kva_ptr] = alloc_page_helper(cur_va,pgdir,pcbptr);
-        bios_sdread(kva[kva_ptr],8,cur_block);
+        bios_sdread(kva2pa(kva[kva_ptr]),8,cur_block);
         cur_block += 8;
         rest_block -=8;
         cur_va += PAGE_SIZE;
@@ -38,7 +37,7 @@ uint64_t load_task_img(int taskid,ptr_t pgdir,pcb_t *pcbptr)
     }
     if(rest_block!=0){ //不是正好整页，额外操作一次
         kva[kva_ptr] = alloc_page_helper(cur_va,pgdir,pcbptr);
-        bios_sdread(kva[kva_ptr],rest_block,cur_block);
+        bios_sdread(kva2pa(kva[kva_ptr]),rest_block,cur_block);
         cur_va += PAGE_SIZE;
         kva_ptr++;
     }

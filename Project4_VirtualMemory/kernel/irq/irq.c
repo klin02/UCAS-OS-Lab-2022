@@ -48,6 +48,7 @@ void init_exception()
     for(int i=0;i<EXCC_COUNT;i++)
         exc_table[i] = &handle_other;
     exc_table[EXCC_SYSCALL] = &handle_syscall;
+    exc_table[EXCC_INST_PAGE_FAULT] = &handle_ld_st_pagefault;
     exc_table[EXCC_LOAD_PAGE_FAULT] = &handle_ld_st_pagefault;
     exc_table[EXCC_STORE_PAGE_FAULT] = &handle_ld_st_pagefault;
     /* TODO: [p2-task4] initialize irq_table */
@@ -61,7 +62,42 @@ void init_exception()
 }
 
 void handle_ld_st_pagefault(regs_context_t *regs, uint64_t stval, uint64_t scause){
-    alloc_page_helper(stval,current_running->pgdir,current_running);
+    ptr_t align_vaddr = ((stval & VA_MASK) >> NORMAL_PAGE_SHIFT ) << NORMAL_PAGE_SHIFT;
+    int swap_find = 0;
+    int swap_id = -1;
+    for(int i=0;i<SWAP_PAGE;i++){
+        if(swap_page[i].valid == 0)
+            continue;
+        if(swap_page[i].pid == current_running->pid && swap_page[i].vaddr == align_vaddr)
+        {
+            swap_find = 1;
+            swap_id = i;
+            break;
+        }
+    }
+    if(swap_find == 1)
+    {
+        //分配一页，从swap区调入并更新页节点相关信息
+        int ava_id = allocPage(1);
+        ptr_t ava_kva = ava_page[ava_id].addr;
+        ptr_t ava_pa = kva2pa(ava_kva);
+        bios_sdread(ava_pa,8,swap_page[swap_id].block_id);
+        swap_page[swap_id].valid = 0;
+        ava_page[ava_id].pid = swap_page[swap_id].pid;
+        ava_page[ava_id].vaddr = swap_page[swap_id].vaddr;
+        ava_page[ava_id].ppte = swap_page[swap_id].ppte;
+        // 更新页表项信息
+        ptr_t bit_0  = _PAGE_PRESENT |_PAGE_USER | _PAGE_READ | _PAGE_WRITE | _PAGE_EXEC | _PAGE_ACCESSED | _PAGE_DIRTY;
+        ptr_t ava_ppn = (ava_pa >> NORMAL_PAGE_SHIFT) << _PAGE_PFN_SHIFT;
+        set_attribute(ava_page[ava_id].ppte,ava_ppn | bit_0);
+        // 增加入可换出队列
+        port_page_list[port_list_head] = ava_id;
+        port_list_head = (port_list_head + 1) % MAXPAGE;
+    }
+    else{
+        alloc_page_helper(stval,current_running->pgdir,current_running);
+    }
+        
     local_flush_tlb_all();
     return;
 }

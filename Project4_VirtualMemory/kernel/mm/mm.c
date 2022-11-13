@@ -2,47 +2,105 @@
 #include <pgtable.h>
 #include <os/string.h>
 #include <os/sched.h>
+#include <os/kernel.h>
+#include <assert.h>
 
 // NOTE: A/C-core
 static ptr_t kernMemCurr = FREEMEM_KERNEL;
-ptr_t Page_Addr[MAXPAGE]={0};
-char  Page_Flag[MAXPAGE]={0}; //0表示可用，1表示被占用
+// ptr_t Page_Addr[MAXPAGE]={0};
+// char  Page_Flag[MAXPAGE]={0}; //0表示可用，1表示被占用
+
+Page_Node ava_page[MAXPAGE];
+int port_page_list[MAXPAGE]; //可换出页的序号列表，FIFO逻辑管理
+//仿照fifo循环队列的数组管理,head tail初始相等
+//head和tail相同为空，当head+1与tail取模相同时表示满（事实上无法达到，因为port页数小于物理页数）
+int port_list_head;
+int port_list_tail;
+Swap_Node swap_page[SWAP_PAGE];
 
 void init_mm(){
     //初始化可用的页表数组，默认一页
     for(int i=0;i<MAXPAGE;i++){
-        Page_Addr[i] = kernMemCurr;
-        Page_Flag[i] = 0; //空闲
+        ava_page[i].addr = kernMemCurr;
+        ava_page[i].valid = 0;//空闲
         kernMemCurr += PAGE_SIZE;
+    }
+    for(int i=0;i<MAXPAGE;i++){
+        port_page_list[MAXPAGE] = 0;
+    }
+    port_list_head = port_list_tail = 0;
+    for(int i=0;i<SWAP_PAGE;i++){
+        swap_page[i].block_id = swap_block_offset + i*8; //每个swap对应的起始扇区号
+        swap_page[i].valid = 0;
     }
 }
 
-ptr_t allocPage(int numPage,pcb_t *pcbptr)
+//更改：为便于页管理，返回分配页的id。进入portlist也在外部完成
+int allocPage(int numPage)
 {
     // align PAGE_SIZE
-    int flag=1;
+    int avafull=1;
     int hitnum;
     for(int i=0;i<MAXPAGE;i++){
-        if(Page_Flag[i]==0){
-            flag=0;
+        if(ava_page[i].valid==0){
+            avafull=0;
             hitnum=i;
             break;
         }
     }
-    if(flag==1)
-        return 0; //无可用页，返回非法地址
+    if(avafull==1)//可用页已满
+    {
+        if(port_list_head == port_list_tail) //无可换出页
+        {
+            printk("Port list empty!\n");
+            assert(0);
+        }    
+        else{
+            int swapfull = 1;
+            int swap_id = -1;
+            for(int i=0;i<SWAP_PAGE;i++)
+                if(swap_page[i].valid==0){
+                    swapfull = 0;
+                    swap_id = i;
+                    break;
+                }
+            if(swapfull == 1) //swap区已满
+            {
+                printk("Swap Full!\n");
+                assert(0);
+            }    
+            else //有可换出页，且swap区未满
+            {
+                //拷贝该页到swap取，并清空映射该换出页的表项
+                int port_id = port_page_list[port_list_tail];
+                port_list_tail = (port_list_tail + 1)%MAXPAGE;
+                ptr_t port_pa = get_pa(*(ava_page[port_id].ppte));
+                *(ava_page[port_id].ppte) = 0;
+                bios_sdwrite(port_pa,8,swap_page[swap_id].block_id);
+                //设置swap节点
+                swap_page[swap_id].valid = 1;
+                swap_page[swap_id].pid = ava_page[port_id].pid;
+                swap_page[swap_id].vaddr = ava_page[port_id].vaddr;
+                swap_page[swap_id].ppte = ava_page[port_id].ppte;
+                //将原先的物理页分配出去
+                ava_page[port_id].pid = 0;
+                ava_page[port_id].vaddr = 0;
+                ava_page[port_id].ppte = 0;
+                return port_id;
+            }
+        }
+    }
     else{
-        Page_Flag[hitnum]=1; //标记占用
-        pcbptr->pg_addr[pcbptr->pg_num++] = Page_Addr[hitnum];
-        return Page_Addr[hitnum];
+        ava_page[hitnum].valid=1;
+        return hitnum;
     }
 }
 
 void freePage(ptr_t baseAddr)
 {
     // TODO [P4-task1] (design you 'freePage' here if you need):
-    int page_id = (baseAddr - FREEMEM_KERNEL) / PAGE_SIZE;
-    Page_Flag[page_id] = 0;
+    // int page_id = (baseAddr - FREEMEM_KERNEL) / PAGE_SIZE;
+    // Page_Flag[page_id] = 0;
 }
 
 void *kmalloc(size_t size)
@@ -73,19 +131,22 @@ uintptr_t alloc_page_helper(uintptr_t va, uintptr_t pgdir,pcb_t *pcbptr)
     ptr_t vpn0 = (vpn2 << (PPN_BITS + PPN_BITS)) ^ (vpn1 << PPN_BITS) ^ (va >> NORMAL_PAGE_SHIFT);
     //L2页表已有地址，此处为L1和L0页表地址和最终物理页的虚拟地址
     ptr_t pgdir1,pgdir0,pg_vpa;
+    int pgdir1_id,pgdir0_id,pg_vpa_id; //对应页标号
     //对应提取出的物理地址
     ptr_t pgdir1_ppn,pgdir0_ppn,pg_pa;
     ptr_t valid2,valid1,valid0;
     //需要置起的flag位
     ptr_t bit_21 = _PAGE_PRESENT | _PAGE_USER ;
-    ptr_t bit_0  = _PAGE_PRESENT |_PAGE_USER | _PAGE_READ | _PAGE_WRITE | _PAGE_EXEC | _PAGE_ACCESSED | _PAGE_DIRTY;
+    ptr_t bit_0  = _PAGE_PRESENT |_PAGE_USER | _PAGE_READ | _PAGE_WRITE | _PAGE_EXEC;
     //L2 中的页表项
     ptr_t pgdir2_entry = ((PTE *)pgdir)[vpn2];
     valid2 = pgdir2_entry & _PAGE_PRESENT;
     if(valid2 == 0){
-        pgdir1 = allocPage(1,pcbptr);
+        pgdir1_id = allocPage(1);
+        pgdir1 = ava_page[pgdir1_id].addr;
         pgdir1_ppn = (kva2pa(pgdir1)>>NORMAL_PAGE_SHIFT)<<_PAGE_PFN_SHIFT;
         set_attribute((PTE *)pgdir+vpn2,pgdir1_ppn | bit_21);
+        clear_pgdir(pgdir1);
     }
     else{
         pgdir1 = pa2kva(get_pa(pgdir2_entry));
@@ -94,9 +155,11 @@ uintptr_t alloc_page_helper(uintptr_t va, uintptr_t pgdir,pcb_t *pcbptr)
     ptr_t pgdir1_entry = ((PTE *)pgdir1)[vpn1];
     valid1 = pgdir1_entry & _PAGE_PRESENT;
     if(valid1 == 0){
-        pgdir0 = allocPage(1,pcbptr);
+        pgdir0_id = allocPage(1);
+        pgdir0 = ava_page[pgdir0_id].addr;
         pgdir0_ppn = (kva2pa(pgdir0)>>NORMAL_PAGE_SHIFT)<<_PAGE_PFN_SHIFT;
         set_attribute((PTE *)pgdir1+vpn1,pgdir0_ppn | bit_21);
+        clear_pgdir(pgdir0);
     }
     else{
         pgdir0 = pa2kva(get_pa(pgdir1_entry));
@@ -105,9 +168,26 @@ uintptr_t alloc_page_helper(uintptr_t va, uintptr_t pgdir,pcb_t *pcbptr)
     ptr_t pgdir0_entry = ((PTE *)pgdir0)[vpn0];
     valid0 = pgdir0_entry & _PAGE_PRESENT;
     if(valid0 == 0){
-        pg_vpa = allocPage(1,pcbptr);
+        pg_vpa_id = allocPage(1);
+        pg_vpa = ava_page[pg_vpa_id].addr;
         pg_pa = (kva2pa(pg_vpa)>>NORMAL_PAGE_SHIFT)<<_PAGE_PFN_SHIFT;
         set_attribute((PTE *)pgdir0+vpn0,pg_pa | bit_0);
+        clear_pgdir(pg_vpa);
+        //设置可用页节点内容
+        ptr_t align_vaddr = (va >> NORMAL_PAGE_SHIFT) << NORMAL_PAGE_SHIFT;
+        ava_page[pg_vpa_id].pid = pcbptr->pid;
+        ava_page[pg_vpa_id].vaddr = align_vaddr;
+        ava_page[pg_vpa_id].ppte = (PTE *)pgdir0+vpn0;
+        //最后一级物理页，加入可替换队列
+        if((port_list_head+1) % MAXPAGE != port_list_tail % MAXPAGE) //非满
+        {
+            port_page_list[port_list_head] = pg_vpa_id;
+            port_list_head = (port_list_head + 1) % MAXPAGE;
+        }        
+        else{
+            printk("port list full!\n");
+            assert(0);
+        }
     }
     else{
         pg_vpa = pa2kva(get_pa(pgdir0_entry));

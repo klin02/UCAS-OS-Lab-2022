@@ -5,6 +5,6 @@
 #include <os/sched.h>
 
 //uint64_t load_task_img(char *taskname);
-uint64_t load_task_img(int task_id,ptr_t pgdir,ptr_t *pcbptr);
+uint64_t load_task_img(int task_id,ptr_t pgdir,pcb_t *pcbptr);
 
 #endif
