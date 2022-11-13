@@ -48,9 +48,9 @@ void init_exception()
     for(int i=0;i<EXCC_COUNT;i++)
         exc_table[i] = &handle_other;
     exc_table[EXCC_SYSCALL] = &handle_syscall;
-    exc_table[EXCC_INST_PAGE_FAULT] = &handle_ld_st_pagefault;
-    exc_table[EXCC_LOAD_PAGE_FAULT] = &handle_ld_st_pagefault;
-    exc_table[EXCC_STORE_PAGE_FAULT] = &handle_ld_st_pagefault;
+    exc_table[EXCC_INST_PAGE_FAULT] = &handle_ld_pagefault;    //本次实验未测试该例外
+    exc_table[EXCC_LOAD_PAGE_FAULT] = &handle_ld_pagefault;
+    exc_table[EXCC_STORE_PAGE_FAULT] = &handle_st_pagefault;
     /* TODO: [p2-task4] initialize irq_table */
     /* NOTE: handle_int, handle_other, etc.*/
     for(int i=0;i<IRQC_COUNT;i++)
@@ -61,7 +61,25 @@ void init_exception()
     setup_exception();
 }
 
-void handle_ld_st_pagefault(regs_context_t *regs, uint64_t stval, uint64_t scause){
+void handle_ld_pagefault(regs_context_t *regs, uint64_t stval, uint64_t scause){
+    int res = present_checker(stval,current_running->pgdir,0);
+    if(res == 1) return ;
+    else{
+        handle_pagefault(stval);
+        return ;
+    }
+}
+
+void handle_st_pagefault(regs_context_t *regs, uint64_t stval, uint64_t scause){
+    int res = present_checker(stval,current_running->pgdir,1);
+    if(res == 1) return ;
+    else{
+        handle_pagefault(stval);
+        return ;
+    }
+}
+
+void handle_pagefault(uint64_t stval){
     ptr_t align_vaddr = ((stval & VA_MASK) >> NORMAL_PAGE_SHIFT ) << NORMAL_PAGE_SHIFT;
     int swap_find = 0;
     int swap_id = -1;
@@ -87,9 +105,9 @@ void handle_ld_st_pagefault(regs_context_t *regs, uint64_t stval, uint64_t scaus
         ava_page[ava_id].vaddr = swap_page[swap_id].vaddr;
         ava_page[ava_id].ppte = swap_page[swap_id].ppte;
         // 更新页表项信息
-        ptr_t bit_0  = _PAGE_PRESENT |_PAGE_USER | _PAGE_READ | _PAGE_WRITE | _PAGE_EXEC | _PAGE_ACCESSED | _PAGE_DIRTY;
+        // ptr_t bit_0  = _PAGE_PRESENT |_PAGE_USER | _PAGE_READ | _PAGE_WRITE | _PAGE_EXEC | _PAGE_ACCESSED | _PAGE_DIRTY;
         ptr_t ava_ppn = (ava_pa >> NORMAL_PAGE_SHIFT) << _PAGE_PFN_SHIFT;
-        set_attribute(ava_page[ava_id].ppte,ava_ppn | bit_0);
+        set_attribute(ava_page[ava_id].ppte,ava_ppn | swap_page[swap_id].bit);
         // 增加入可换出队列
         port_page_list[port_list_head] = ava_id;
         port_list_head = (port_list_head + 1) % MAXPAGE;

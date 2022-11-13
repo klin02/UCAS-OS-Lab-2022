@@ -75,6 +75,7 @@ int allocPage(int numPage)
                 int port_id = port_page_list[port_list_tail];
                 port_list_tail = (port_list_tail + 1)%MAXPAGE;
                 ptr_t port_pa = get_pa(*(ava_page[port_id].ppte));
+                ptr_t port_bit = get_attribute(*(ava_page[port_id].ppte),_PAGE_PFN_MASK);
                 *(ava_page[port_id].ppte) = 0;
                 bios_sdwrite(port_pa,8,swap_page[swap_id].block_id);
                 //设置swap节点
@@ -82,6 +83,7 @@ int allocPage(int numPage)
                 swap_page[swap_id].pid = ava_page[port_id].pid;
                 swap_page[swap_id].vaddr = ava_page[port_id].vaddr;
                 swap_page[swap_id].ppte = ava_page[port_id].ppte;
+                swap_page[swap_id].bit = port_bit;
                 //将原先的物理页分配出去
                 ava_page[port_id].pid = 0;
                 ava_page[port_id].vaddr = 0;
@@ -195,6 +197,37 @@ uintptr_t alloc_page_helper(uintptr_t va, uintptr_t pgdir,pcb_t *pcbptr)
     return pg_vpa;
 }
 
+//功能：查找，如果发现表项存在，只是没有置位，则置位并返回1；否则返回0
+int present_checker(uintptr_t va, uintptr_t pgdir,int mode) //mode: 0 ld 1 st
+{
+    va = va & VA_MASK;
+    ptr_t vpn2 = va >> (NORMAL_PAGE_SHIFT + PPN_BITS + PPN_BITS);
+    ptr_t vpn1 = (vpn2 << PPN_BITS) ^ (va >> (NORMAL_PAGE_SHIFT + PPN_BITS));
+    ptr_t vpn0 = (vpn2 << (PPN_BITS + PPN_BITS)) ^ (vpn1 << PPN_BITS) ^ (va >> NORMAL_PAGE_SHIFT);
+    ptr_t pgdir1,pgdir0,pg_vpa;
+    ptr_t valid2,valid1,valid0;
+
+    ptr_t bit_ld = _PAGE_ACCESSED;
+    ptr_t bit_st = _PAGE_ACCESSED | _PAGE_DIRTY;
+    ptr_t pgdir2_entry = ((PTE *)pgdir)[vpn2];
+    valid2 = pgdir2_entry & _PAGE_PRESENT;
+    if(valid2 == 0) return 0;
+    else pgdir1 = pa2kva(get_pa(pgdir2_entry));
+
+    ptr_t pgdir1_entry = ((PTE *)pgdir1)[vpn1];
+    valid1 = pgdir1_entry & _PAGE_PRESENT;
+    if(valid1 == 0) return 0;
+    else pgdir0 = pa2kva(get_pa(pgdir1_entry));
+
+    ptr_t pgdir0_entry = ((PTE *)pgdir0)[vpn0];
+    valid0 = pgdir0_entry & _PAGE_PRESENT;
+    if(valid0 == 0) return 0;
+    else{
+        if(mode == 0) set_attribute((PTE *)pgdir0+vpn0,bit_ld);
+        else          set_attribute((PTE *)pgdir0+vpn0,bit_st);
+        return 1;
+    }
+}
 
 uintptr_t shm_page_get(int key)
 {

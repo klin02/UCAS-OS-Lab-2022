@@ -76,6 +76,7 @@ static inline void set_satp(
 #define _PAGE_SOFT (1 << 8)     /* Reserved for software */
 
 #define _PAGE_PFN_SHIFT 10lu
+#define _PAGE_PFN_MASK ((1lu << _PAGE_PFN_SHIFT)-1)
 
 #define VA_MASK ((1lu << 39) - 1)
 
@@ -113,9 +114,8 @@ static inline long get_pfn(PTE entry)
     //unsigned 类型 高位自动补零
     uint64_t mask = ((1lu << 54) - 1);
     return (entry & mask) >> 10;
-
-
 }
+
 static inline void set_pfn(PTE *entry, uint64_t pfn)
 {
     /* TODO: [P4-task1] */
@@ -124,7 +124,7 @@ static inline void set_pfn(PTE *entry, uint64_t pfn)
 }
 
 /* Get/Set attribute(s) of the `entry` */
-static inline long get_attribute(PTE entry, uint64_t mask)
+static inline ptr_t get_attribute(PTE entry, uint64_t mask)
 {
     /* TODO: [P4-task1] */
     return entry & mask;

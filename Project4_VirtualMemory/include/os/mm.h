@@ -57,6 +57,7 @@ typedef struct {
         int   pid;
         ptr_t vaddr;  //页对齐后，取掩码后的虚地址
         PTE * ppte;   //映射到该页的页表项
+        ptr_t bit;    //置位信息
 }Swap_Node;
 
 //mode：0 fix 1 port 可换出
@@ -79,6 +80,7 @@ extern ptr_t allocLargePage(int numPage);
 extern void* kmalloc(size_t size);
 extern void share_pgtable(uintptr_t dest_pgdir, uintptr_t src_pgdir);
 extern uintptr_t alloc_page_helper(uintptr_t va, uintptr_t pgdir,pcb_t *pcbptr);
+extern int present_checker(uintptr_t va, uintptr_t pgdir,int mode);
 
 // TODO [P4-task4]: shm_page_get/dt */
 uintptr_t shm_page_get(int key);
