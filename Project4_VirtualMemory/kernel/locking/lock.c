@@ -262,8 +262,18 @@ void do_mbox_close(int mbox_idx){
         mbox[mbox_idx].status = CLOSED;
         mbox[mbox_idx].index =0;
         mbox[mbox_idx].visitor =0;
-        list_init(&mbox[mbox_idx].full_queue);
-        list_init(&mbox[mbox_idx].empty_queue);
+    while(mbox[mbox_idx].empty_queue.prev != NULL){
+        pcb_t * tmp = list_entry(mbox[mbox_idx].empty_queue.prev,pcb_t,list);
+        dequeue(&(mbox[mbox_idx].empty_queue));
+        do_unblock(&(tmp->list)); //保持EXITED状态
+    }
+    while(mbox[mbox_idx].full_queue.prev != NULL){
+        pcb_t * tmp = list_entry(mbox[mbox_idx].full_queue.prev,pcb_t,list);
+        dequeue(&(mbox[mbox_idx].full_queue));
+        do_unblock(&(tmp->list)); //改变状态及入队列
+    }
+        // list_init(&mbox[mbox_idx].full_queue);
+        // list_init(&mbox[mbox_idx].empty_queue);
         //printk("                                     Close Mbox suc!");
     }
 }

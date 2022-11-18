@@ -62,8 +62,8 @@ main:
 # 	call 	bios_func_entry
 
 	li 	a0, user_info_addr
-	lh 	a3, 0(a0)  //kernel_block_id
-	lh 	a2, 2(a0)  //kernel_block_num
+	lw 	a3, 0(a0)  //kernel_block_id
+	lw 	a2, 4(a0)  //kernel_block_num
 	li 	a0, BIOS_SDREAD
 	li 	a1, kernel
 	li 	a4, ignore
@@ -74,8 +74,8 @@ main:
 	// then kernel is in memory, need to be remove ahead by offset
 	li 	a0, kernel
 	li 	a4, user_info_addr
-	lh 	a1, 4(a4) //kernel_entry_offset
-	lh 	a2, 6(a4) //kernel_tail_offset
+	lw 	a1, 8(a4) //kernel_entry_offset
+	lw 	a2, 12(a4) //kernel_tail_offset
 	add 	a1, a1, a0 //entry real addr
 	add 	a2, a2, a0 //tail real addr
 Move_Kn:

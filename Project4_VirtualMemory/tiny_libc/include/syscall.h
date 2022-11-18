@@ -22,8 +22,8 @@
 #define SYSCALL_LOCK_RELEASE 42
 
 //取0-63中未被使用过的数，保持和arch/riscv/asm/unistd.h一致
-#define SYSCALL_THREAD_CREATE 60
-#define SYSCALL_THREAD_RECYCLE 61
+#define SYSCALL_PTHREAD_CREATE 60
+#define SYSCALL_PTHREAD_JOIN 61
 
 #define SYSCALL_SHOW_TASK 43
 #define SYSCALL_BARR_INIT 44

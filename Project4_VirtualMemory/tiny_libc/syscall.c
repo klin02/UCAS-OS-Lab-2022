@@ -1,6 +1,7 @@
 #include <syscall.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <pthread.h>
 
 static const long IGNORE = 0L;
 
@@ -105,22 +106,6 @@ void sys_sleep(uint32_t time)
 {
     /* TODO: [p2-task3] call invoke_syscall to implement sys_sleep */
     invoke_syscall(SYSCALL_SLEEP,(long)time,IGNORE,IGNORE,IGNORE,IGNORE);
-}
-
-//TASK5: create thread
-// void sys_thread_create(void *func,void *arg)
-// {
-//     invoke_syscall(SYSCALL_THREAD_CREATE,(long)func,(long)arg,IGNORE,IGNORE,IGNORE);
-// }
-
-//Additional func: recycle thread
-void sys_thread_create(void *func,void *arg,void *rc_func) //回收函数地址
-{
-    invoke_syscall(SYSCALL_THREAD_CREATE,(long)func,(long)arg,(long)rc_func,IGNORE,IGNORE);
-}
-
-void sys_thread_recycle(){
-    invoke_syscall(SYSCALL_THREAD_RECYCLE,IGNORE,IGNORE,IGNORE,IGNORE,IGNORE);
 }
 
 // S-core
@@ -263,12 +248,24 @@ int sys_mbox_recv(int mbox_idx, void *msg, int msg_length)
     return invoke_syscall(SYSCALL_MBOX_RECV,(long)mbox_idx,(long)msg,(long)msg_length,IGNORE,IGNORE);
 }
 
+void sys_pthread_create(pthread_t *thread, void (*start_routine)(void*),void *arg)
+{
+    invoke_syscall(SYSCALL_PTHREAD_CREATE,(long)thread,(long)start_routine,(long)arg,IGNORE,IGNORE);
+}
+
+int sys_pthread_join(pthread_t thread)
+{
+    return invoke_syscall(SYSCALL_PTHREAD_JOIN,(long)thread,IGNORE,IGNORE,IGNORE,IGNORE);
+}
+
 void* sys_shmpageget(int key)
 {
     /* TODO: [p4-task5] call invoke_syscall to implement sys_shmpageget */
+    return invoke_syscall(SYSCALL_SHM_GET,(long)key,IGNORE,IGNORE,IGNORE,IGNORE);
 }
 
 void sys_shmpagedt(void *addr)
 {
     /* TODO: [p4-task5] call invoke_syscall to implement sys_shmpagedt */
+    invoke_syscall(SYSCALL_SHM_DT,(long)addr,IGNORE,IGNORE,IGNORE,IGNORE);
 }

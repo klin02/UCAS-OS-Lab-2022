@@ -191,7 +191,7 @@ $(ELF_CREATEIMAGE): $(SRC_CREATEIMAGE)
 
 image: $(ELF_CREATEIMAGE) $(ELF_BOOT) $(ELF_MAIN) $(ELF_USER)
 	cd $(DIR_BUILD) && ./$(<F) --extended $(filter-out $(<F), $(^F)) 
-	dd if=/dev/zero of=image oflag=append conv=notrunc bs=512MB count=2
+	dd if=/dev/zero of=image oflag=append conv=notrunc bs=64MB count=2
 
 # task 5: the src will include a txt, load in app-info sector
 # BAT_SRC1 = ./build/bat1.txt

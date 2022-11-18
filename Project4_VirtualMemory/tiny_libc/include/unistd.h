@@ -21,9 +21,8 @@ void sys_mutex_release(int mutex_idx);
 // void sys_mutex_acquire(void);
 // void sys_mutex_release(void);
 
-//void sys_thread_create(void *func,void *arg);
-void sys_thread_create(void *func,void *arg,void *rc_func);
-void sys_thread_recycle();
+void sys_pthread_create(pthread_t *thread, void (*start_routine)(void*),void *arg);
+int sys_pthread_join(pthread_t thread);
 
 /* TODO: [P3 task1] ps, getchar */
 void sys_ps(void);

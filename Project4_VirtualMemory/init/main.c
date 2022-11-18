@@ -43,7 +43,7 @@
 #include <assert.h>
 #include <type.h>
 #include <csr.h>
-#include <os/thread.h>
+#include <os/pthread.h>
 #include <pgtable.h>
 
 // 注意该地址应当与bootblock同步改变
@@ -67,7 +67,7 @@ extern void ret_from_exception();
 
 // Task info array
 task_info_t tasks[TASK_MAXNUM];
-short tasknum;
+int tasknum;
 //新增入队列和出队列函数，方便队列维护
 //定义在sched.h中，实现在sched.c中
 
@@ -113,10 +113,10 @@ static void init_task_info(void)
     // NOTE: You need to get some related arguments from bootblock first
     // 根据用户信息扇区获取（已加载到内存），只需加载选定程序即可，在load中实现
     unsigned char * ptr = (unsigned long *)USER_INFO_ADDR;
-    ptr += 8;
+    ptr += 16; //4 int
     //tasknum is define in task.h
-    memcpy((unsigned char *)&tasknum,ptr,2);
-    ptr += 2;
+    memcpy((unsigned char *)&tasknum,ptr,4);
+    ptr += 4;
     for(int i=0;i<tasknum;i++){
         memcpy((unsigned char *)&tasks[i],ptr,sizeof(task_info_t));
         ptr += sizeof(task_info_t);
@@ -210,18 +210,20 @@ pid_t init_pcb(char *name, int argc, char *argv[])
     int pid=hitid+1;
     pcb[hitid].pid=pid;     //完成初始化后加1
     pcb[hitid].ppid = ppid;
-    //初始化主线程tid为-1
-    pcb[hitid].tid=-1;
-    //初始化页数组
-    pcb[hitid].pg_num = 0;
-    for(int i=0;i<128;i++)
-        pcb[hitid].pg_addr[i] = 0;
+    //初始化主线程tid为0
+    pcb[hitid].tid=0;
+    pcb[hitid].thread_num = 0;
+
     pcb[hitid].wakeup_time = 0;
-    pcb[hitid].pgdir = ava_page[allocPage(1)].addr;
+    int pgdir_id = allocPage(1);
+    pcb[hitid].pgdir = ava_page[pgdir_id].addr;
+    ava_page[pgdir_id].pid = pid;
     clear_pgdir(pcb[hitid].pgdir);
     share_pgtable(pcb[hitid].pgdir,pa2kva(PGDIR_PA));
     //注意：内核栈需要内核地址空间中占据页表。已在boot.c中完成映射
-    pcb[hitid].kernel_stack_base = ava_page[allocPage(1)].addr;
+    int kstack_id = allocPage(1);
+    pcb[hitid].kernel_stack_base = ava_page[kstack_id].addr;
+    ava_page[kstack_id].pid = pid;
     pcb[hitid].kernel_sp = pcb[hitid].kernel_stack_base + PAGE_SIZE - 128;  
     //用户栈使用用户地址空间，相互独立
     //注意不能正好处于下一页的页头
@@ -284,14 +286,15 @@ void init_idle_pcb(){
     for(int i=0;i<2;i++)
     {
         idle_pcb[i].pid=0;
-        idle_pcb[i].pg_num = 0;
-        for(int j=0;j<128;j++)
-            idle_pcb[i].pg_addr[j] = 0;
-        idle_pcb[i].pgdir = ava_page[allocPage(1)].addr;
+        int pgdir_id = allocPage(1);
+        ava_page[pgdir_id].pid = 0;
+        idle_pcb[i].pgdir = ava_page[pgdir_id].addr;
         clear_pgdir(idle_pcb[i].pgdir);
         share_pgtable(idle_pcb[i].pgdir,pa2kva(PGDIR_PA));
         //注意：内核栈需要内核地址空间中占据页表。已在boot.c中完成映射
-        idle_pcb[i].kernel_stack_base = ava_page[allocPage(1)].addr;
+        int kstack_id = allocPage(1);
+        ava_page[pgdir_id].pid = 0;
+        idle_pcb[i].kernel_stack_base = ava_page[kstack_id].addr;
         idle_pcb[i].kernel_sp = idle_pcb[i].kernel_stack_base + PAGE_SIZE - 128;  
         //用户栈使用用户地址空间，相互独立
         //注意不能正好处于下一页的页头
@@ -326,8 +329,6 @@ static void init_syscall(void)
     syscall[SYSCALL_LOCK_INIT]      = (long(*)())do_mutex_lock_init;
     syscall[SYSCALL_LOCK_ACQ]       = (long(*)())do_mutex_lock_acquire;
     syscall[SYSCALL_LOCK_RELEASE]   = (long(*)())do_mutex_lock_release;
-    syscall[SYSCALL_THREAD_CREATE]  = (long(*)())thread_create;
-    syscall[SYSCALL_THREAD_RECYCLE] = (long(*)())thread_recycle;
     syscall[SYSCALL_SHOW_TASK]      = (long(*)())do_process_show;
     syscall[SYSCALL_EXEC]           = (long(*)())do_exec;
     syscall[SYSCALL_EXIT]           = (long(*)())do_exit;
@@ -348,6 +349,10 @@ static void init_syscall(void)
     syscall[SYSCALL_MBOX_RECV]      = (long(*)())do_mbox_recv;
     syscall[SYSCALL_RUNMASK]        = (long(*)())do_runmask;
     syscall[SYSCALL_SETMASK]        = (long(*)())do_setmask;
+    syscall[SYSCALL_PTHREAD_CREATE] = (long(*)())do_pthread_create;
+    syscall[SYSCALL_PTHREAD_JOIN]   = (long(*)())do_pthread_join;
+    syscall[SYSCALL_SHM_GET]        = (long(*)())shm_page_get;
+    syscall[SYSCALL_SHM_DT]         = (long(*)())shm_page_dt;
 }
 
 int main(void)

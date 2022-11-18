@@ -227,7 +227,7 @@ void do_process_show(){
             coreid =1;
         else
             coreid =2;//illegal
-        printk("[%d] PID : %d PPID : %d STATUS : ",i,pcb[i].pid,pcb[i].ppid);
+        printk("[%d] PID : %d PPID : %d TID : %d STATUS : ",i,pcb[i].pid,pcb[i].ppid,pcb[i].tid);
         switch(pcb[i].status){
             case TASK_BLOCKED: printk("BLOCKED mask:%d\n",pcb[i].mask); break;
             case TASK_RUNNING: printk("RUNNING mask:%d Running on Core %d\n",pcb[i].mask,coreid); break;
@@ -262,12 +262,13 @@ void do_setmask(int pid,int mask){
     }
 }
 void pcb_recycle(pid_t pid){
+    //更新：为适配线程相关，此处pid仅表示第几个PCB，从1开始
     //功能：对应用户栈和内核栈取消占用标记，pcb块取消占用标记，释放等待队列，将属于其的锁队列和同步变量释放。调度
     //杀死子进程
-    for(int i=0;i<NUM_MAX_TASK;i++){
-        if(pcb_flag[i]==1 && pcb[i].ppid == pid)
-            do_kill(pcb[i].pid);
-    }
+    // for(int i=0;i<NUM_MAX_TASK;i++){
+    //     if(pcb_flag[i]==1 && pcb[i].ppid == pid)
+    //         do_kill(pcb[i].pid);
+    // }
     //释放锁队列
     for(int i=0;i<LOCK_NUM;i++)
     {
@@ -297,8 +298,13 @@ void pcb_recycle(pid_t pid){
     pcb[pid-1].mbox_cnt =0;
     //释放占用的物理页
     for(int i=0;i<MAXPAGE;i++)
-        if(ava_page[i].valid == 1 && ava_page[i].pid == pid)
+        if(ava_page[i].valid == 1 && ava_page[i].pid == pid && pid == 2)
+            {
             ava_page[i].valid = 0;
+            ava_page[i].vaddr = 0;
+            ava_page[i].pid   = 0;
+            ava_page[i].ppte  = 0;
+            }
     //释放swap部分
     for(int i=0;i<SWAP_PAGE;i++)
         if(swap_page[i].valid == 1 && swap_page[i].pid == pid)
@@ -337,13 +343,18 @@ int do_kill(pid_t pid){
         do_exit();
         return 1;
     }
-    else if(pcb_flag[pid-1] == 1){
-        pcb[pid-1].status = TASK_EXITED;
-        pcb_recycle(pid);
-        return 1;
+    else{
+        int do_kill = 0;
+        for(int i=0;i<NUM_MAX_TASK;i++){
+            if(pcb_flag[i] == 1 && pcb[i].pid == pid && pcb[i].status != TASK_EXITED)
+            {
+                pcb[i].status = TASK_EXITED;
+                pcb_recycle(i+1); //此处后续pid与占用位置不重合，不会出问题
+                do_kill = 1;
+            }
+        }
+        return do_kill;
     }
-    else 
-        return 0;
 }
 int do_waitpid(pid_t pid){
     if(pcb_flag[pid-1] == 1){

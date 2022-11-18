@@ -95,6 +95,8 @@ int main(void)
                 break;
             }
             else if(ch == 8 || ch == 127){
+                if(strptr == 0)
+                    continue;
                 strbuf[--strptr] = ' ';
                 backspace();
             }

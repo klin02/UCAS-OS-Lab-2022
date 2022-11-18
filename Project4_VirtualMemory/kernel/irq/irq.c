@@ -62,7 +62,7 @@ void init_exception()
 }
 
 void handle_ld_pagefault(regs_context_t *regs, uint64_t stval, uint64_t scause){
-    int res = present_checker(stval,current_running->pgdir,0);
+    int res = bit_setter(stval,current_running->pgdir,0);
     if(res == 1) return ;
     else{
         handle_pagefault(stval);
@@ -71,7 +71,7 @@ void handle_ld_pagefault(regs_context_t *regs, uint64_t stval, uint64_t scause){
 }
 
 void handle_st_pagefault(regs_context_t *regs, uint64_t stval, uint64_t scause){
-    int res = present_checker(stval,current_running->pgdir,1);
+    int res = bit_setter(stval,current_running->pgdir,1);
     if(res == 1) return ;
     else{
         handle_pagefault(stval);
@@ -131,7 +131,7 @@ void handle_other(regs_context_t *regs, uint64_t stval, uint64_t scause)
         " s9  "," s10 "," s11 "," t3  "," t4  ",
         " t5  "," t6  "
     };
-    printk("Core %d\n\r",get_current_cpu_id());
+    printk("Core %d PID %d\n\r",get_current_cpu_id(),current_running->pid);
     for (int i = 0; i < 32; i += 3) {
         for (int j = 0; j < 3 && i + j < 32; ++j) {
             printk("%s : %016lx ",reg_name[i+j], regs->regs[i+j]);

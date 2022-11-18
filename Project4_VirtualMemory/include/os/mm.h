@@ -35,7 +35,7 @@
 #define MEM_SIZE 32
 #define PAGE_SIZE 4096 // 4K
 #define INIT_KERNEL_STACK_0 0xffffffc052000000
-#define INIT_KERNEL_STACK_1 (INIT_KERNEL_STACK_0+PAGE_SIZE)
+#define INIT_KERNEL_STACK_1 0xffffffc052001000
 #define FREEMEM_KERNEL 0xffffffc052003000
 /* Rounding; only works for n = power of two */
 #define ROUND(a, n)     (((((uint64_t)(a))+(n)-1)) & ~((n)-1))
@@ -60,6 +60,12 @@ typedef struct {
         ptr_t bit;    //置位信息
 }Swap_Node;
 
+typedef struct {
+        int   id;
+        char  valid;
+        int   visitor;
+}Shm_Index;
+
 //mode：0 fix 1 port 可换出
 extern int allocPage(int numPage);
 // TODO [P4-task1] */
@@ -80,9 +86,14 @@ extern ptr_t allocLargePage(int numPage);
 extern void* kmalloc(size_t size);
 extern void share_pgtable(uintptr_t dest_pgdir, uintptr_t src_pgdir);
 extern uintptr_t alloc_page_helper(uintptr_t va, uintptr_t pgdir,pcb_t *pcbptr);
-extern int present_checker(uintptr_t va, uintptr_t pgdir,int mode);
+extern int bit_setter(uintptr_t va, uintptr_t pgdir,int mode);
+extern int pa_setter(uintptr_t pa,uintptr_t va,uintptr_t pgdir);
+extern int shm_pgid(uintptr_t va,uintptr_t pgdir);
 
 // TODO [P4-task4]: shm_page_get/dt */
+# define SHM_PAGE_BASE 0x100010000
+# define SHM_MAX_PAGE 16
+extern Shm_Index shm_page_index[SHM_MAX_PAGE];
 uintptr_t shm_page_get(int key);
 void shm_page_dt(uintptr_t addr);
 

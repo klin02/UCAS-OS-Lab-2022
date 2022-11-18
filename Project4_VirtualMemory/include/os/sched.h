@@ -84,9 +84,9 @@ typedef struct pcb
     pid_t pid;
     pid_t ppid;
     //thread id
-    pid_t tid;
+    int tid;      //0为主线程
     //标记占用的tcb块，以便进行回收
-    int tcb_num;
+    int thread_num; //子线程数
     
     /* BLOCK | READY | RUNNING */
     task_status_t status;
@@ -107,9 +107,6 @@ typedef struct pcb
 
     int mask;
 
-    //为该进程独自分配的页：页头地址数组
-    int pg_num;
-    ptr_t pg_addr[128];
 } pcb_t;
 
 /* ready queue to run */

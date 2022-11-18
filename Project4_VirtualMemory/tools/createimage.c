@@ -48,7 +48,7 @@ static uint32_t get_memsz(Elf64_Phdr phdr);
 static void write_segment(Elf64_Phdr phdr, FILE *fp, FILE *img, int *phyaddr);
 static void write_padding(FILE *img, int *phyaddr, int new_phyaddr);
 static void write_img_info(int nbytes_kernel, task_info_t *taskinfo,
-                           short tasknum, FILE *img);
+                           int tasknum, FILE *img);
 
 int info_sz; //用户信息占用位置，在kernel前,该变量所有子函数可见
 
@@ -101,7 +101,7 @@ static void create_image(int nfiles, char *files[])
     assert(img != NULL);
 
     //task4: 为了制作用户信息扇区，提前遍历获取信息，但是此时不必遍历bootblock
-    info_sz = 5*sizeof(short) + tasknum*sizeof(task_info_t); //用户信息占用位置，在kernel前
+    info_sz = 5*sizeof(int) + tasknum*sizeof(task_info_t); //用户信息占用位置，在kernel前
     int cntaddr = SECTOR_SIZE + info_sz; //从第二个扇区kernel位置开始统计位置情况
     //task3的使用中只使用一次入参，此处需要使用备份fp
     char **nfl = files;
@@ -281,7 +281,7 @@ static void write_padding(FILE *img, int *phyaddr, int new_phyaddr)
 }
 
 static void write_img_info(int nbytes_kern, task_info_t *taskinfo,
-                           short tasknum, FILE * img)
+                           int tasknum, FILE * img)
 {
     // TODO: [p1-task3] & [p1-task4] write image info to some certain places
     // NOTE: os size, infomation about app-info sector(s) ...
@@ -301,19 +301,19 @@ static void write_img_info(int nbytes_kern, task_info_t *taskinfo,
     fputc(BOOT_LOADER_SIG_1,img);
     fputc(BOOT_LOADER_SIG_2,img);
     //以下为第二个扇区
-    short kernel_entry = SECTOR_SIZE + info_sz;
-    short kernel_block_id = kernel_entry / SECTOR_SIZE;
-    short kernel_tail_id = (kernel_entry + nbytes_kern) / SECTOR_SIZE;
-    short kernel_block_num = kernel_tail_id - kernel_block_id +1;
+    int kernel_entry = SECTOR_SIZE + info_sz;
+    int kernel_block_id = kernel_entry / SECTOR_SIZE;
+    int kernel_tail_id = (kernel_entry + nbytes_kern) / SECTOR_SIZE;
+    int kernel_block_num = kernel_tail_id - kernel_block_id +1;
     //offset from kernel addr in memory
-    short kernel_entry_offset = kernel_entry - kernel_block_id*SECTOR_SIZE;
-    short kernel_tail_offset = kernel_entry_offset + nbytes_kern;
-
-    fwrite(&kernel_block_id,2,1,img);
-    fwrite(&kernel_block_num,2,1,img);
-    fwrite(&kernel_entry_offset,2,1,img);
-    fwrite(&kernel_tail_offset,2,1,img);
-    fwrite(&tasknum,2,1,img);
+    int kernel_entry_offset = kernel_entry - kernel_block_id*SECTOR_SIZE;
+    int kernel_tail_offset = kernel_entry_offset + nbytes_kern;
+    printf("tail offset %d\n",kernel_tail_offset);
+    fwrite(&kernel_block_id,4,1,img);
+    fwrite(&kernel_block_num,4,1,img);
+    fwrite(&kernel_entry_offset,4,1,img);
+    fwrite(&kernel_tail_offset,4,1,img);
+    fwrite(&tasknum,4,1,img);
     for(int i=0;i<tasknum;i++) 
         fwrite(&taskinfo[i],sizeof(task_info_t),1,img);
 }

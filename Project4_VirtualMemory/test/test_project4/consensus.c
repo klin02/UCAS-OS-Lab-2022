@@ -22,6 +22,7 @@ typedef struct consensus_vars {
 
 int is_first(consensus_vars_t *vars)
 {
+    //
     unsigned long my = atomic_exchange_d(&vars->magic_number, MAGIC);
     return my != MAGIC;
 }
@@ -52,6 +53,7 @@ int main(int argc, char* argv[])
 
     consensus_vars_t *vars = (consensus_vars_t*) sys_shmpageget(SHMP_KEY);
 
+    // printf("first vars %lx\n",&vars->consensus);
     if (vars == NULL) {
         sys_move_cursor(1, print_location);
         printf("shmpageget failed!\n");
@@ -64,6 +66,8 @@ int main(int argc, char* argv[])
     // then, sys_shmpageget should get another virtual address
     vars->magic_number = MAGIC;
     vars = (consensus_vars_t*) sys_shmpageget(SHMP_KEY);
+    // printf("second vars %lx\n",&vars->consensus);
+    // while(1);
     sys_move_cursor(1, print_location);
 
     if (is_first(vars)) {
@@ -141,6 +145,6 @@ int main(int argc, char* argv[])
 
     sys_move_cursor(1, print_location);
     printf("(%d) exited!                            \n", mypid);
-
+    // while(1);
     return 0;
 }
