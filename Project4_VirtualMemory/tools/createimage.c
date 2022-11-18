@@ -297,6 +297,7 @@ static void write_img_info(int nbytes_kern, task_info_t *taskinfo,
     //detailed taskinfo will be get in loader by entry and size
     fseek(img,OS_SIZE_LOC,SEEK_SET);
     short info_sec = NBYTES2SEC(info_sz);
+    printf("info sec: %d\n",info_sec);
     fwrite(&info_sec,2,1,img);
     fputc(BOOT_LOADER_SIG_1,img);
     fputc(BOOT_LOADER_SIG_2,img);

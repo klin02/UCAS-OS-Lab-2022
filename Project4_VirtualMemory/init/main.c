@@ -217,13 +217,13 @@ pid_t init_pcb(char *name, int argc, char *argv[])
     pcb[hitid].wakeup_time = 0;
     int pgdir_id = allocPage(1);
     pcb[hitid].pgdir = ava_page[pgdir_id].addr;
-    ava_page[pgdir_id].pid = pid;
+    ava_page[pgdir_id].pid = 0; //顶级目录不释放
     clear_pgdir(pcb[hitid].pgdir);
     share_pgtable(pcb[hitid].pgdir,pa2kva(PGDIR_PA));
     //注意：内核栈需要内核地址空间中占据页表。已在boot.c中完成映射
     int kstack_id = allocPage(1);
     pcb[hitid].kernel_stack_base = ava_page[kstack_id].addr;
-    ava_page[kstack_id].pid = pid;
+    ava_page[kstack_id].pid = 0; //内核栈不释放
     pcb[hitid].kernel_sp = pcb[hitid].kernel_stack_base + PAGE_SIZE - 128;  
     //用户栈使用用户地址空间，相互独立
     //注意不能正好处于下一页的页头

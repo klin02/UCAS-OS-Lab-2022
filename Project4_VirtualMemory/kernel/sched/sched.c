@@ -298,12 +298,11 @@ void pcb_recycle(pid_t pid){
     pcb[pid-1].mbox_cnt =0;
     //释放占用的物理页
     for(int i=0;i<MAXPAGE;i++)
-        if(ava_page[i].valid == 1 && ava_page[i].pid == pid && pid == 2)
+        if(ava_page[i].valid == 1 && ava_page[i].pid == pid)
             {
             ava_page[i].valid = 0;
             ava_page[i].vaddr = 0;
             ava_page[i].pid   = 0;
-            ava_page[i].ppte  = 0;
             }
     //释放swap部分
     for(int i=0;i<SWAP_PAGE;i++)
@@ -326,6 +325,7 @@ void pcb_recycle(pid_t pid){
         port_page_list[i] = 0;
     port_list_head = tmpptr;
     port_list_tail = 0;
+    flush_all();
 }
 void do_exit(void){
     pid_t pid = current_running->pid;

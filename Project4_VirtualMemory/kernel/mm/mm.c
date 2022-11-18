@@ -156,7 +156,7 @@ uintptr_t alloc_page_helper(uintptr_t va, uintptr_t pgdir,pcb_t *pcbptr)
     valid2 = pgdir2_entry & _PAGE_PRESENT;
     if(valid2 == 0){
         pgdir1_id = allocPage(1);
-        ava_page[pgdir1_id].pid = pcbptr->pid;
+        ava_page[pgdir1_id].pid = 0;
         pgdir1 = ava_page[pgdir1_id].addr;
         pgdir1_ppn = (kva2pa(pgdir1)>>NORMAL_PAGE_SHIFT)<<_PAGE_PFN_SHIFT;
         set_attribute((PTE *)pgdir+vpn2,pgdir1_ppn | bit_21);
@@ -170,7 +170,7 @@ uintptr_t alloc_page_helper(uintptr_t va, uintptr_t pgdir,pcb_t *pcbptr)
     valid1 = pgdir1_entry & _PAGE_PRESENT;
     if(valid1 == 0){
         pgdir0_id = allocPage(1);
-        ava_page[pgdir0_id].pid = pcbptr->pid;
+        ava_page[pgdir0_id].pid = 0;
         pgdir0 = ava_page[pgdir0_id].addr;
         pgdir0_ppn = (kva2pa(pgdir0)>>NORMAL_PAGE_SHIFT)<<_PAGE_PFN_SHIFT;
         set_attribute((PTE *)pgdir1+vpn1,pgdir0_ppn | bit_21);
@@ -263,7 +263,7 @@ int pa_setter(uintptr_t pa,uintptr_t va,uintptr_t pgdir){
     valid2 = pgdir2_entry & _PAGE_PRESENT;
     if(valid2 == 0){
         pgdir1_id = allocPage(1);
-        ava_page[pgdir1_id].pid = current_running->pid;
+        ava_page[pgdir1_id].pid = 0;
         pgdir1 = ava_page[pgdir1_id].addr;
         pgdir1_ppn = (kva2pa(pgdir1)>>NORMAL_PAGE_SHIFT)<<_PAGE_PFN_SHIFT;
         set_attribute((PTE *)pgdir+vpn2,pgdir1_ppn | bit_21);
@@ -278,7 +278,7 @@ int pa_setter(uintptr_t pa,uintptr_t va,uintptr_t pgdir){
     if(valid1 == 0){
         pgdir0_id = allocPage(1);
         pgdir0 = ava_page[pgdir0_id].addr;
-        ava_page[pgdir0_id].pid = current_running->pid;
+        ava_page[pgdir0_id].pid = 0;
         pgdir0_ppn = (kva2pa(pgdir0)>>NORMAL_PAGE_SHIFT)<<_PAGE_PFN_SHIFT;
         set_attribute((PTE *)pgdir1+vpn1,pgdir0_ppn | bit_21);
         clear_pgdir(pgdir0);
@@ -340,16 +340,15 @@ uintptr_t shm_page_get(int key)
         if(swap_used == 1)
             uva += PAGE_SIZE;
         else
-            break;
+        {//搜索页表，如果虚地址已被分配，则返回0；否则将pa映射到该虚地址，并返回1
+            int res = pa_setter(pa,uva,current_running->pgdir);
+            if(res == 1)
+                break;
+            else
+                uva += PAGE_SIZE;
+        }
     }
-    //搜索页表，如果虚地址已被分配，则返回0；否则将pa映射到该虚地址，并返回1
-    while(1){
-        int res = pa_setter(pa,uva,current_running->pgdir);
-        if(res == 1)
-            break;
-        else
-            uva += PAGE_SIZE;
-    }
+    
     return uva;
 }
 
@@ -417,7 +416,6 @@ void shm_page_dt(uintptr_t addr)
             ava_page[abort_id].valid = 0;
             ava_page[abort_id].vaddr = 0;
             ava_page[abort_id].pid   = 0;
-            ava_page[abort_id].ppte  = 0;
             //清空由分配时按需负责
         }
     }
