@@ -269,3 +269,15 @@ void sys_shmpagedt(void *addr)
     /* TODO: [p4-task5] call invoke_syscall to implement sys_shmpagedt */
     invoke_syscall(SYSCALL_SHM_DT,(long)addr,IGNORE,IGNORE,IGNORE,IGNORE);
 }
+
+void* sys_snap_init()
+{
+    return invoke_syscall(SYSCALL_SNAP_INIT,IGNORE,IGNORE,IGNORE,IGNORE,IGNORE);
+}
+void* sys_snap_shot(void *init_uva){
+    return invoke_syscall(SYSCALL_SNAP_SHOT,(long)init_uva,IGNORE,IGNORE,IGNORE,IGNORE);
+}
+void* sys_va2pa(void *va)
+{
+    return invoke_syscall(SYSCALL_VA2PA,(long)va,IGNORE,IGNORE,IGNORE,IGNORE);
+}

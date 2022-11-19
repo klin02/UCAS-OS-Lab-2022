@@ -64,5 +64,18 @@ void do_pthread_create(pthread_t *thread,void (*start_routine)(void*),void *arg)
 }
 
 int do_pthread_join(pthread_t thread){
-        return 0;
+        int find = 0;
+        int child;
+        for(int i=0;i<NUM_MAX_TASK;i++)
+                if(pcb_flag[i] == 1 && pcb[i].pid == current_running->pid && pcb[i].tid == thread){
+                        find =1;
+                        child = i;
+                }
+        if(find == 1){
+                do_block(&(current_running->list),&(pcb[child].wait_queue));
+                do_scheduler();
+                return 1;
+        }
+        else
+                return 0;
 }

@@ -4,7 +4,8 @@
 #include <unistd.h>
 
 #define START 0x100000 
-
+// #define TESTSWAP 4096
+#define TESTSWAP 512
 int stop=0;
 void stophere();
 int main(){
@@ -13,27 +14,35 @@ int main(){
         //每512页打印一次测试数据
 	uint64_t *array = START;
 	int i, j;
-	sys_move_cursor(1, 2);
+	sys_move_cursor(0, 0);
 	printf("Testing First Loop:\n");
 	//for(i = 0; i < 4096; i++){
-	for(i = 0; i < 1024; i++){	
+	int prt_num=0;
+	for(i = 0; i < TESTSWAP; i++){	
 		// if(i == 221)
 		// 	stophere();
                 array[i*512] = i;
-		if(i % 64 == 0)
-		// if(i > 220)
+		if(i % 32 == 0){
 			printf("%04d:%04d ", i, array[i * 512]);
+			prt_num++;
+			if(prt_num == 8){
+				printf("\n");
+				prt_num = 0;
+			}
+		}
+			
+
 	}
 	printf("First Loop done!\n");
-	sys_clear();
-	sys_move_cursor(1, 2);
+	// sys_clear();
+	// sys_move_cursor(1, 2);
 	printf("Test Second Loop:\n");
 	//for(i = 0; i < 4096; i++){
-	for(i = 0; i < 1024; i++){
-		if(i % 64 == 0)
+	for(i = 0; i < TESTSWAP; i++){
+		if(i % 32 == 0)
 			printf("%04d:%04d ", i, array[i * 512]);
 	}
-	printf("\n Test Done\n");
+	printf("Test Done\n");
 	return 0;
 }
 // void stophere(){

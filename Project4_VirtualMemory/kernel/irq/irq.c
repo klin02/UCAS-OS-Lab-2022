@@ -29,6 +29,7 @@ void interrupt_helper(regs_context_t *regs, uint64_t stval, uint64_t scause)
         irq_table[code](regs,stval,scause);
     else
         exc_table[code](regs,stval,scause);
+        
 }
 
 void handle_irq_timer(regs_context_t *regs, uint64_t stval, uint64_t scause)
@@ -48,8 +49,9 @@ void init_exception()
     for(int i=0;i<EXCC_COUNT;i++)
         exc_table[i] = &handle_other;
     exc_table[EXCC_SYSCALL] = &handle_syscall;
-    exc_table[EXCC_INST_PAGE_FAULT] = &handle_ld_pagefault;    //本次实验未测试该例外
-    exc_table[EXCC_LOAD_PAGE_FAULT] = &handle_ld_pagefault;
+    exc_table[EXCC_STORE_ACCESS]     = &handle_st_pagefault;
+    exc_table[EXCC_INST_PAGE_FAULT]  = &handle_ld_pagefault;    //本次实验未测试该例外
+    exc_table[EXCC_LOAD_PAGE_FAULT]  = &handle_ld_pagefault;
     exc_table[EXCC_STORE_PAGE_FAULT] = &handle_st_pagefault;
     /* TODO: [p2-task4] initialize irq_table */
     /* NOTE: handle_int, handle_other, etc.*/
@@ -61,6 +63,7 @@ void init_exception()
     setup_exception();
 }
 
+
 void handle_ld_pagefault(regs_context_t *regs, uint64_t stval, uint64_t scause){
     int res = bit_setter(stval,current_running->pgdir,0);
     if(res == 1) return ;
@@ -70,6 +73,7 @@ void handle_ld_pagefault(regs_context_t *regs, uint64_t stval, uint64_t scause){
     }
 }
 
+//可能原因：dirty为0或写权限未打开
 void handle_st_pagefault(regs_context_t *regs, uint64_t stval, uint64_t scause){
     int res = bit_setter(stval,current_running->pgdir,1);
     if(res == 1) return ;

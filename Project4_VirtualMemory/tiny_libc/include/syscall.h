@@ -44,4 +44,7 @@
 #define SYSCALL_RUNMASK   58
 #define SYSCALL_SETMASK   59
 
+#define SYSCALL_SNAP_INIT 10
+#define SYSCALL_SNAP_SHOT 11
+#define SYSCALL_VA2PA     12
 #endif

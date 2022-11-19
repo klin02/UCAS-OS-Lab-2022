@@ -48,6 +48,7 @@ typedef struct {
         int   pid;
         ptr_t vaddr;  //页对齐后，取掩码后的虚地址
         PTE * ppte;   //映射到该页的页表项
+        char  snap_page;
 }Page_Node;
 
 typedef struct {
@@ -97,7 +98,8 @@ extern Shm_Index shm_page_index[SHM_MAX_PAGE];
 uintptr_t shm_page_get(int key);
 void shm_page_dt(uintptr_t addr);
 
-#define MAXPAGE 512  //0x100
+// #define MAXPAGE 64
+#define MAXPAGE 256  //0x100
 // extern ptr_t Page_Addr[MAXPAGE];
 // extern char  Page_Flag[MAXPAGE]; //0表示可用，1表示被占用
 
@@ -108,10 +110,17 @@ extern int port_list_head;
 extern int port_list_tail;
 
 #define SWAP_PAGE 4096
-
+// #define SWAP_PAGE 128
 extern Swap_Node swap_page[SWAP_PAGE];
 
 #define SECTOR_SIZE 512
 extern int swap_block_offset;
 extern void init_mm();
+
+#define SNAP_INIT 0xa00010000
+#define SNAP_BASE 0xb00000000
+extern ptr_t do_snap_init();
+extern ptr_t snap_getpa_setbit(ptr_t init_uva);
+extern ptr_t do_snap_shot(ptr_t init_uva);
+extern ptr_t do_va2pa(ptr_t va);
 #endif /* MM_H */

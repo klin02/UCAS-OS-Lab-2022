@@ -67,4 +67,7 @@ int sys_mbox_recv(int mbox_idx, void *msg, int msg_length);
 void* sys_shmpageget(int key);
 void sys_shmpagedt(void *addr);
 
+void* sys_snap_init();
+void* sys_snap_shot(void *init_uva);
+void* sys_va2pa(void *va);
 #endif

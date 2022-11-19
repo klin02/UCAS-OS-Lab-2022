@@ -66,6 +66,7 @@ void do_scheduler(void)
     int changehead=1;
     int found=0; //找到合适的目标
     pcb_t * head;
+    int loc; //回收pcb块位置
     while(1){
         next_running = dequeue(&ready_queue);
         if(changehead==1){
@@ -85,7 +86,8 @@ void do_scheduler(void)
                 changehead=1; 
                 isfirst = 1;
             }
-            pcb_flag[next_running->pid-1]=0; // 取消占用标记
+            loc = next_running->pid + next_running->tid -1;
+            pcb_flag[loc]=0; // 取消占用标记
         } 
         else if(next_running->status == TASK_READY && next_running->mask!=3 && next_running->mask != cpu_id+1)//重新入队
         {
@@ -109,8 +111,12 @@ void do_scheduler(void)
         else{
             current_running_1 = current_running;
         }
+        //为适配线程，此处不能直接用pid索引，而是需要结合pid确定
         if(last_running->pid!=0 && last_running->status == TASK_EXITED)
-            pcb_flag[last_running->pid-1] = 0; 
+        {
+            loc = current_running->pid + current_running->tid - 1;
+            pcb_flag[loc] = 0;
+        }
         else if(last_running->pid==0 || last_running->status == TASK_EXITED || last_running->status == TASK_BLOCKED)
             ;
         else
@@ -121,7 +127,8 @@ void do_scheduler(void)
         //切回内核空泡进程时不需切换页表，因为已经拷贝完成
         //MODE ASID VA(SHIFT)
         set_satp(SATP_MODE_SV39, next_running->pid,kva2pa(next_running->pgdir) >> NORMAL_PAGE_SHIFT);
-        local_flush_tlb_all();            
+        // local_flush_tlb_all();
+        flush_all();            
         //}
         // if(last_running->pid == 0)
         //     return;
@@ -139,7 +146,10 @@ void do_scheduler(void)
     // }
 
     if(current_running->pid!=0 && current_running->status == TASK_EXITED)
-        pcb_flag[current_running->pid-1]=0;
+    {
+        loc = current_running->pid + current_running->tid - 1;
+        pcb_flag[loc] = 0;
+    }
     else if(current_running->pid != 0 && current_running->status != TASK_BLOCKED && current_running->status !=TASK_EXITED){//task1中只需考虑pcb0不回收，后续任务需要考虑状态
         current_running->status = TASK_READY;
         enqueue(&ready_queue,current_running);
@@ -164,7 +174,8 @@ void do_scheduler(void)
     //     printk("Sub core set satp!\n");
     // }
     set_satp(SATP_MODE_SV39, next_running->pid,kva2pa(next_running->pgdir) >> NORMAL_PAGE_SHIFT);
-    local_flush_tlb_all();            
+    // local_flush_tlb_all();
+    flush_all();            
     //alloc_page_helper(0x10000,next_running->pgdir,next_running);
     switch_to(last_running,next_running);
 
@@ -296,7 +307,7 @@ void pcb_recycle(pid_t pid){
         do_mbox_close(pcb[pid-1].mbox_arr[i]);
     }
     pcb[pid-1].mbox_cnt =0;
-    //释放占用的物理页
+    // //释放占用的物理页
     for(int i=0;i<MAXPAGE;i++)
         if(ava_page[i].valid == 1 && ava_page[i].pid == pid)
             {
@@ -325,7 +336,7 @@ void pcb_recycle(pid_t pid){
         port_page_list[i] = 0;
     port_list_head = tmpptr;
     port_list_tail = 0;
-    flush_all();
+    // flush_all();
 }
 void do_exit(void){
     pid_t pid = current_running->pid;

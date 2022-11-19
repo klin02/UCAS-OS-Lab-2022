@@ -25,6 +25,7 @@ void init_mm(){
     for(int i=0;i<MAXPAGE;i++){
         ava_page[i].addr = kernMemCurr;
         ava_page[i].valid = 0;//空闲
+        ava_page[i].snap_page = 0;
         kernMemCurr += PAGE_SIZE;
     }
     for(int i=0;i<MAXPAGE;i++){
@@ -57,8 +58,6 @@ int allocPage(int numPage)
     }
     if(avafull==1)//可用页已满
     {
-        printk("Trigger swap!\n");
-        while(1);
         if(port_list_head == port_list_tail) //无可换出页
         {
             printk("Port list empty!\n");
@@ -97,6 +96,7 @@ int allocPage(int numPage)
                 ava_page[port_id].pid = 0;
                 ava_page[port_id].vaddr = 0;
                 ava_page[port_id].ppte = 0;
+                ava_page[port_id].snap_page =0;
                 bzero((void *)ava_page[port_id].addr,PAGE_SIZE);
                 return port_id;
             }
@@ -104,6 +104,7 @@ int allocPage(int numPage)
     }
     else{
         ava_page[hitnum].valid=1;
+        ava_page[hitnum].snap_page = 0;
         bzero((void *)ava_page[hitnum].addr,PAGE_SIZE);
         return hitnum;
     }
@@ -156,7 +157,7 @@ uintptr_t alloc_page_helper(uintptr_t va, uintptr_t pgdir,pcb_t *pcbptr)
     valid2 = pgdir2_entry & _PAGE_PRESENT;
     if(valid2 == 0){
         pgdir1_id = allocPage(1);
-        ava_page[pgdir1_id].pid = 0;
+        ava_page[pgdir1_id].pid = pcbptr->pid;
         pgdir1 = ava_page[pgdir1_id].addr;
         pgdir1_ppn = (kva2pa(pgdir1)>>NORMAL_PAGE_SHIFT)<<_PAGE_PFN_SHIFT;
         set_attribute((PTE *)pgdir+vpn2,pgdir1_ppn | bit_21);
@@ -170,7 +171,7 @@ uintptr_t alloc_page_helper(uintptr_t va, uintptr_t pgdir,pcb_t *pcbptr)
     valid1 = pgdir1_entry & _PAGE_PRESENT;
     if(valid1 == 0){
         pgdir0_id = allocPage(1);
-        ava_page[pgdir0_id].pid = 0;
+        ava_page[pgdir0_id].pid = pcbptr->pid;
         pgdir0 = ava_page[pgdir0_id].addr;
         pgdir0_ppn = (kva2pa(pgdir0)>>NORMAL_PAGE_SHIFT)<<_PAGE_PFN_SHIFT;
         set_attribute((PTE *)pgdir1+vpn1,pgdir0_ppn | bit_21);
@@ -210,8 +211,10 @@ uintptr_t alloc_page_helper(uintptr_t va, uintptr_t pgdir,pcb_t *pcbptr)
     return pg_vpa;
 }
 
-//功能：查找，如果发现表项存在，只是没有置位，则置位并返回1；否则返回0
+//功能：查找，如果发现表项存在，但没有置位，则置位并返回1；否则返回0
  //mode: 0 ld 1 st 
+ //st模式下可能是因为写权限未打开，记为write模式
+ //在write模式下，将额外检查该页是否为snap页，如是，需要取消该页标记，新分配一页，标记并拷贝数据后放入表项。
 int bit_setter(uintptr_t va, uintptr_t pgdir,int mode)
 {
     va = va & VA_MASK;
@@ -223,6 +226,8 @@ int bit_setter(uintptr_t va, uintptr_t pgdir,int mode)
 
     ptr_t bit_ld = _PAGE_ACCESSED;
     ptr_t bit_st = _PAGE_ACCESSED | _PAGE_DIRTY;
+    ptr_t bit_write = _PAGE_WRITE;
+    ptr_t bit_full = _PAGE_PRESENT |_PAGE_USER | _PAGE_READ | _PAGE_WRITE | _PAGE_EXEC | _PAGE_ACCESSED | _PAGE_DIRTY;
     ptr_t pgdir2_entry = ((PTE *)pgdir)[vpn2];
     valid2 = pgdir2_entry & _PAGE_PRESENT;
     if(valid2 == 0) return 0;
@@ -238,7 +243,41 @@ int bit_setter(uintptr_t va, uintptr_t pgdir,int mode)
     if(valid0 == 0) return 0;
     else{
         if(mode == 0) set_attribute((PTE *)pgdir0+vpn0,bit_ld);
-        else          set_attribute((PTE *)pgdir0+vpn0,bit_st);
+        else //Dirty为空或write权限未打开
+        {
+            ptr_t write0 = pgdir0_entry & _PAGE_WRITE;
+            if(write0 !=0)
+                set_attribute((PTE *)pgdir0+vpn0,bit_st); //对应dirty为0
+            else{
+                ptr_t old_pa = get_pa(pgdir0_entry);
+                ptr_t old_kva = pa2kva(old_pa);
+                int is_snap = 0;
+                int old_id = -1;
+                for(int i=0;i<MAXPAGE;i++)
+                    if(ava_page[i].valid == 1 && ava_page[i].addr == old_kva && ava_page[i].snap_page == 1)
+                    {
+                        is_snap = 1;
+                        old_id = i;
+                        break;
+                    }
+                if(is_snap == 0)//非snap页，置位即可
+                    set_attribute((PTE *)pgdir0+vpn0,bit_write);
+                else{
+                    //将正本标记转移到新页
+                    int new_id = allocPage(1);
+                    ava_page[new_id].snap_page = 1;
+                    ava_page[new_id].pid = current_running->pid;
+                    ava_page[old_id].snap_page = 0;
+                    //拷贝内容
+                    share_pgtable(ava_page[new_id].addr,ava_page[old_id].addr);
+                    //更新表项，置位为可写防止重复更改。由快照消除D位
+                    ptr_t new_pfn = ( kva2pa(ava_page[new_id].addr) >> NORMAL_PAGE_SHIFT ) << _PAGE_PFN_SHIFT;
+                    *((PTE *)pgdir0+vpn0) = 0;
+                    set_attribute((PTE *)pgdir0+vpn0,new_pfn | bit_full);
+                }                
+            }
+        }
+        local_flush_tlb_all();      
         return 1;
     }
 }
@@ -263,7 +302,7 @@ int pa_setter(uintptr_t pa,uintptr_t va,uintptr_t pgdir){
     valid2 = pgdir2_entry & _PAGE_PRESENT;
     if(valid2 == 0){
         pgdir1_id = allocPage(1);
-        ava_page[pgdir1_id].pid = 0;
+        ava_page[pgdir1_id].pid = current_running->pid;
         pgdir1 = ava_page[pgdir1_id].addr;
         pgdir1_ppn = (kva2pa(pgdir1)>>NORMAL_PAGE_SHIFT)<<_PAGE_PFN_SHIFT;
         set_attribute((PTE *)pgdir+vpn2,pgdir1_ppn | bit_21);
@@ -278,7 +317,7 @@ int pa_setter(uintptr_t pa,uintptr_t va,uintptr_t pgdir){
     if(valid1 == 0){
         pgdir0_id = allocPage(1);
         pgdir0 = ava_page[pgdir0_id].addr;
-        ava_page[pgdir0_id].pid = 0;
+        ava_page[pgdir0_id].pid = current_running->pid;
         pgdir0_ppn = (kva2pa(pgdir0)>>NORMAL_PAGE_SHIFT)<<_PAGE_PFN_SHIFT;
         set_attribute((PTE *)pgdir1+vpn1,pgdir0_ppn | bit_21);
         clear_pgdir(pgdir0);
@@ -294,6 +333,7 @@ int pa_setter(uintptr_t pa,uintptr_t va,uintptr_t pgdir){
         //注意：pa应当处理为表项要求
         pa = (pa >> NORMAL_PAGE_SHIFT) << _PAGE_PFN_SHIFT;
         set_attribute((PTE *)pgdir0+vpn0,pa | bit_0);
+        local_flush_tlb_all();
         //共享页表不可加入可换出队列
         return 1;
     }
@@ -419,5 +459,142 @@ void shm_page_dt(uintptr_t addr)
             //清空由分配时按需负责
         }
     }
-    local_flush_tlb_all();
+    // local_flush_tlb_all();
+    flush_all();
+}
+
+//功能：分配物理页，然后从基址开始寻找可用虚拟地址放置该物理页，设置可写权限
+ptr_t do_snap_init(){
+    int pgid = allocPage(1);
+    ava_page[pgid].pid = current_running->pid;
+    ava_page[pgid].snap_page = 1;
+    ptr_t kva = ava_page[pgid].addr;
+    ptr_t pa  = kva2pa(kva);
+    //从基址开始搜索未被访问的地址
+    ptr_t uva = SNAP_INIT;
+    //搜索swap区，确认该进程未使用过该虚地址
+    while(1){
+        int swap_used = 0;
+        for(int i=0;i<SWAP_PAGE;i++)
+            if(swap_page[i].valid == 1 && swap_page[i].pid == current_running->pid && swap_page[i].vaddr == uva)
+            {
+                swap_used = 1;
+                break;
+            }
+        if(swap_used == 1)
+            uva += PAGE_SIZE;
+        else
+        {//搜索页表，如果虚地址已被分配，则返回0；否则将pa映射到该虚地址，并返回1
+            int res = pa_setter(pa,uva,current_running->pgdir);
+            if(res == 1)
+                break;
+            else
+                uva += PAGE_SIZE;
+        }
+    }
+    return uva;
+}
+
+//功能：根据正本当前虚地址寻找表项，并查看位。关闭可写权限并返回物理地址。注意，页的更换有写权限异常触发
+ptr_t snap_getpa_setbit(ptr_t init_uva){
+    ptr_t va = init_uva & VA_MASK;
+    ptr_t vpn2 = va >> (NORMAL_PAGE_SHIFT + PPN_BITS + PPN_BITS);
+    ptr_t vpn1 = (vpn2 << PPN_BITS) ^ (va >> (NORMAL_PAGE_SHIFT + PPN_BITS));
+    ptr_t vpn0 = (vpn2 << (PPN_BITS + PPN_BITS)) ^ (vpn1 << PPN_BITS) ^ (va >> NORMAL_PAGE_SHIFT);
+    ptr_t pgdir1,pgdir0,pa;
+    ptr_t valid2,valid1,valid0;
+
+    ptr_t write0;
+
+    ptr_t pgdir2_entry = ((PTE *)current_running->pgdir)[vpn2];
+    valid2 = pgdir2_entry & _PAGE_PRESENT;
+    if(valid2 == 0){
+        assert(0);
+    }
+    else pgdir1 = pa2kva(get_pa(pgdir2_entry));
+
+    ptr_t pgdir1_entry = ((PTE *)pgdir1)[vpn1];
+    valid1 = pgdir1_entry & _PAGE_PRESENT;
+    if(valid1 == 0){
+        assert(0);
+    }
+    else pgdir0 = pa2kva(get_pa(pgdir1_entry));
+
+    ptr_t pgdir0_entry = ((PTE *)pgdir0)[vpn0];
+    valid0 = pgdir0_entry & _PAGE_PRESENT;
+    if(valid0 == 0){
+        assert(0);
+    }
+    else{
+        write0 = pgdir0_entry & _PAGE_WRITE;
+        pa = get_pa(pgdir0_entry);
+        if(write0 == 0)
+            ;
+        else
+        {//复用API，为消除某位，置零后重新填入
+            ptr_t pfn = (pa>>NORMAL_PAGE_SHIFT) << _PAGE_PFN_SHIFT;
+            *((PTE *)pgdir0+vpn0) = 0;
+            ptr_t bit_nowrite  = _PAGE_PRESENT |_PAGE_USER | _PAGE_READ | _PAGE_EXEC | _PAGE_ACCESSED | _PAGE_DIRTY;
+            set_attribute((PTE *)pgdir0+vpn0,pfn | bit_nowrite);
+            local_flush_tlb_all();
+            // flush_all();
+        }
+            return pa;
+    }
+}
+
+//功能：寻找可用虚拟地址放置获取的物理地址
+ptr_t do_snap_shot(ptr_t init_uva){
+    ptr_t pa = snap_getpa_setbit(init_uva);
+    //从基址开始搜索未被访问的地址
+    ptr_t uva = SNAP_BASE;
+    //搜索swap区，确认该进程未使用过该虚地址
+    while(1){
+        int swap_used = 0;
+        for(int i=0;i<SWAP_PAGE;i++)
+            if(swap_page[i].valid == 1 && swap_page[i].pid == current_running->pid && swap_page[i].vaddr == uva)
+            {
+                swap_used = 1;
+                break;
+            }
+        if(swap_used == 1)
+            uva += PAGE_SIZE;
+        else
+        {//搜索页表，如果虚地址已被分配，则返回0；否则将pa映射到该虚地址，并返回1
+            int res = pa_setter(pa,uva,current_running->pgdir);
+            if(res == 1)
+                break;
+            else
+                uva += PAGE_SIZE;
+        }
+    }
+    return uva;   
+}
+
+ptr_t do_va2pa(ptr_t va){
+    va = va & VA_MASK;
+    ptr_t vpn2 = va >> (NORMAL_PAGE_SHIFT + PPN_BITS + PPN_BITS);
+    ptr_t vpn1 = (vpn2 << PPN_BITS) ^ (va >> (NORMAL_PAGE_SHIFT + PPN_BITS));
+    ptr_t vpn0 = (vpn2 << (PPN_BITS + PPN_BITS)) ^ (vpn1 << PPN_BITS) ^ (va >> NORMAL_PAGE_SHIFT);
+    ptr_t pgdir1,pgdir0,pa;
+    ptr_t valid2,valid1,valid0;
+
+    ptr_t pgdir2_entry = ((PTE *)current_running->pgdir)[vpn2];
+    valid2 = pgdir2_entry & _PAGE_PRESENT;
+    if(valid2 == 0) return 0;
+    else pgdir1 = pa2kva(get_pa(pgdir2_entry));
+
+    ptr_t pgdir1_entry = ((PTE *)pgdir1)[vpn1];
+    valid1 = pgdir1_entry & _PAGE_PRESENT;
+    if(valid1 == 0) return 0;
+    else pgdir0 = pa2kva(get_pa(pgdir1_entry));
+
+    ptr_t pgdir0_entry = ((PTE *)pgdir0)[vpn0];
+    valid0 = pgdir0_entry & _PAGE_PRESENT;
+    if(valid0 == 0) return 0;
+    else{
+        //提取内核虚地址，并清空表项
+        pa = get_pa(pgdir0_entry);
+        return pa;
+    }
 }
