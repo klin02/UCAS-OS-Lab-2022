@@ -21,6 +21,7 @@
 extern void ret_from_exception();
 void do_pthread_create(pthread_t *thread,void (*start_routine)(void*),void *arg)
 {
+        //获取未使用的pcb块
         int hitid = -1;
         for(int i=0;i<NUM_MAX_TASK;i++)
                 if(pcb_flag[i]==0)

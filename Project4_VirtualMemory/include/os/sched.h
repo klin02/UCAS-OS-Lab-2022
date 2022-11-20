@@ -139,7 +139,7 @@ void do_unblock(list_node_t *);
 void enqueue(list_head* queue,pcb_t* pnode);
 pcb_t * dequeue(list_head* queue);
 
-void pcb_recycle(pid_t pid);
+void pcb_recycle(pid_t pid,pid_t tid);
 /* TODO [P3-TASK1] exec exit kill waitpid ps*/
 #ifdef S_CORE
 extern pid_t do_exec(int id, int argc, uint64_t arg0, uint64_t arg1, uint64_t arg2);

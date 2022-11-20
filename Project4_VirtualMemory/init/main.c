@@ -197,6 +197,27 @@ pid_t init_pcb(char *name, int argc, char *argv[])
 
     if(task_id == -1)
         return 0; //不存在该任务，直接返回0（非法）
+    
+    //获取未使用的pid，自1开始
+    int pid = 1;
+    int pid_used = 0;
+    while(1){
+        for(int i=0;i<NUM_MAX_TASK;i++)
+            if(pcb_flag[i]==1 && pcb[i].pid == pid)
+            {
+                pid_used = 1;
+                break;
+            }
+        if(pid_used)
+        {
+            pid_used = 0;
+            pid++;
+        }
+        else
+            break;
+    }
+
+    //获取未占用的pcb块位置
     int hitid=-1;
     for(int i=0;i<NUM_MAX_TASK;i++)
         if(pcb_flag[i]==0)
@@ -205,9 +226,8 @@ pid_t init_pcb(char *name, int argc, char *argv[])
             pcb_flag[i]=1;
             break;
         }
-        
     assert(hitid>=0);
-    int pid=hitid+1;
+
     pcb[hitid].pid=pid;     //完成初始化后加1
     pcb[hitid].ppid = ppid;
     //初始化主线程tid为0
@@ -217,13 +237,13 @@ pid_t init_pcb(char *name, int argc, char *argv[])
     pcb[hitid].wakeup_time = 0;
     int pgdir_id = allocPage(1);
     pcb[hitid].pgdir = ava_page[pgdir_id].addr;
-    ava_page[pgdir_id].pid = pid; //顶级目录不释放
+    ava_page[pgdir_id].pid = pid; 
     clear_pgdir(pcb[hitid].pgdir);
     share_pgtable(pcb[hitid].pgdir,pa2kva(PGDIR_PA));
     //注意：内核栈需要内核地址空间中占据页表。已在boot.c中完成映射
     int kstack_id = allocPage(1);
     pcb[hitid].kernel_stack_base = ava_page[kstack_id].addr;
-    ava_page[kstack_id].pid = pid; //内核栈不释放
+    ava_page[kstack_id].pid = pid; 
     pcb[hitid].kernel_sp = pcb[hitid].kernel_stack_base + PAGE_SIZE - 128;  
     //用户栈使用用户地址空间，相互独立
     //注意不能正好处于下一页的页头

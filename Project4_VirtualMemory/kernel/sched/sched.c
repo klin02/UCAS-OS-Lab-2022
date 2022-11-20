@@ -86,8 +86,12 @@ void do_scheduler(void)
                 changehead=1; 
                 isfirst = 1;
             }
-            loc = next_running->pid + next_running->tid -1;
-            pcb_flag[loc]=0; // 取消占用标记
+            for(int i=0;i<NUM_MAX_TASK;i++)
+                if(pcb_flag[i] == 1 && pcb[i].pid == next_running->pid && pcb[i].tid == next_running->tid)
+                {
+                    pcb_flag[i] = 0; // 取消占用标记
+                    break;
+                }
         } 
         else if(next_running->status == TASK_READY && next_running->mask!=3 && next_running->mask != cpu_id+1)//重新入队
         {
@@ -114,8 +118,12 @@ void do_scheduler(void)
         //为适配线程，此处不能直接用pid索引，而是需要结合pid确定
         if(last_running->pid!=0 && last_running->status == TASK_EXITED)
         {
-            loc = current_running->pid + current_running->tid - 1;
-            pcb_flag[loc] = 0;
+            for(int i=0;i<NUM_MAX_TASK;i++)
+                if(pcb_flag[i] == 1 && pcb[i].pid == last_running->pid && pcb[i].tid == last_running->tid)
+                {
+                    pcb_flag[i] = 0; // 取消占用标记
+                    break;
+                }
         }
         else if(last_running->pid==0 || last_running->status == TASK_EXITED || last_running->status == TASK_BLOCKED)
             ;
@@ -145,10 +153,14 @@ void do_scheduler(void)
     //     set_timer(get_ticks()+TIMER_INTERVAL);
     // }
 
-    if(current_running->pid!=0 && current_running->status == TASK_EXITED)
+    if(last_running->pid!=0 && last_running->status == TASK_EXITED)
     {
-        loc = current_running->pid + current_running->tid - 1;
-        pcb_flag[loc] = 0;
+        for(int i=0;i<NUM_MAX_TASK;i++)
+            if(pcb_flag[i] == 1 && pcb[i].pid == last_running->pid && pcb[i].tid == last_running->tid)
+            {
+                pcb_flag[i] = 0; // 取消占用标记
+                break;
+            }
     }
     else if(current_running->pid != 0 && current_running->status != TASK_BLOCKED && current_running->status !=TASK_EXITED){//task1中只需考虑pcb0不回收，后续任务需要考虑状态
         current_running->status = TASK_READY;
@@ -265,49 +277,69 @@ void do_runmask(char *name, int argc, char *argv[],int mask){
     do_setmask(pid,mask);
 }
 void do_setmask(int pid,int mask){
-    if(pcb_flag[pid-1] == 0){
-        printk("Err: Setmask Failed.\n");
+    int do_set = 0;
+    for(int i=0;i<NUM_MAX_TASK;i++){
+        if(pcb_flag[i]==1 && pcb[i].pid == pid)
+        {
+            pcb[i].mask = mask;
+            do_set = 1;
+        }
     }
-    else{
-        pcb[pid-1].mask = mask;
-    }
+    if(do_set == 0)
+        printk("Err: Setmask Failed!\n");
 }
-void pcb_recycle(pid_t pid){
-    //更新：为适配线程相关，此处pid仅表示第几个PCB，从1开始
+
+void pcb_recycle(pid_t pid,pid_t tid){
+    //更新：为适配线程相关，使用位置而非pid回收
     //功能：对应用户栈和内核栈取消占用标记，pcb块取消占用标记，释放等待队列，将属于其的锁队列和同步变量释放。调度
     //杀死子进程
     // for(int i=0;i<NUM_MAX_TASK;i++){
     //     if(pcb_flag[i]==1 && pcb[i].ppid == pid)
     //         do_kill(pcb[i].pid);
     // }
+
+    //定位PCB块
+    int loc = -1;
+    for(int i=0;i<NUM_MAX_TASK;i++)
+        if(pcb_flag[i]==1 && pcb[i].pid == pid && pcb[i].tid == tid){
+            loc = i;
+            break;
+        }
+    if(loc == -1)
+        return ;
+    
     //释放锁队列
     for(int i=0;i<LOCK_NUM;i++)
     {
-        if(mlocks[i].host_id == pid)
+        if(mlocks[i].host_pid == pid && mlocks[i].host_tid == tid)
             do_mutex_lock_release(i);
     }
     //释放等待队列
-    while(pcb[pid-1].wait_queue.prev != NULL){
-        pcb_t * tmp = list_entry(pcb[pid-1].wait_queue.prev,pcb_t,list);
-        dequeue(&(pcb[pid-1].wait_queue));
+    while(pcb[loc].wait_queue.prev != NULL){
+        pcb_t * tmp = list_entry(pcb[loc].wait_queue.prev,pcb_t,list);
+        dequeue(&(pcb[loc].wait_queue));
         do_unblock(&(tmp->list)); //改变状态及入队列
     }
     //释放创建的屏障
     for(int i=0;i<BARRIER_NUM;i++){
-        if(barr[i].used == 1 && barr[i].host_id == pid)
+        if(barr[i].used == 1 && barr[i].host_pid == pid && barr[i].host_tid == tid)
             do_barrier_destroy(i);
     }
     //释放创建的条件变量
     for(int i=0;i<CONDITION_NUM;i++){
-        if(cond[i].used == 1 && cond[i].host_id == pid)
+        if(cond[i].used == 1 && cond[i].host_pid == pid && cond[i].host_tid == tid)
             do_condition_destroy(i);
     }
     //释放占用信箱
-    for(int i=0;i<pcb[pid-1].mbox_cnt;i++){
-        do_mbox_close(pcb[pid-1].mbox_arr[i]);
+    for(int i=0;i<pcb[loc].mbox_cnt;i++){
+        do_mbox_close(pcb[loc].mbox_arr[i]);
     }
-    pcb[pid-1].mbox_cnt =0;
-    // //释放占用的物理页
+    pcb[loc].mbox_cnt =0;
+
+    // 只有主线程才可释放该进程物理页
+    if(tid != 0)
+        return ;
+    //释放占用的物理页
     for(int i=0;i<MAXPAGE;i++)
         if(ava_page[i].valid == 1 && ava_page[i].pid == pid)
             {
@@ -340,42 +372,49 @@ void pcb_recycle(pid_t pid){
 }
 void do_exit(void){
     pid_t pid = current_running->pid;
-    pcb_recycle(pid);
+    pid_t tid = current_running->tid;
+    pcb_recycle(pid,tid);
     current_running->status = TASK_EXITED;
     do_scheduler();
 }
+
+//为满足prj4 consensus任务测试要求，不应杀死子进程，而让各进程自然退出
 int do_kill(pid_t pid){
     //如果kill的是当前进程，则同exit一致。且此时无需关注返回值
     //否则需要更改其状态、回收资源，并在调度的时候取消PCB块占用
     //1.资源立即释放，防止过多占用PCB块。
         //e.g，子进程堵塞屏障中，父进程堵塞子进程等待队列。如果调度才释放，将持续占用PCB块
     //2.在调度时才更改标记，防止同时存在两个队列中
-    if(pid == current_running->pid){
-        do_exit();
-        return 1;
-    }
-    else{
+    // if(pid == current_running->pid){
+    //     do_exit();
+    //     return 1;
+    // }
+    // else{
         int do_kill = 0;
         for(int i=0;i<NUM_MAX_TASK;i++){
             if(pcb_flag[i] == 1 && pcb[i].pid == pid && pcb[i].status != TASK_EXITED)
             {
                 pcb[i].status = TASK_EXITED;
-                pcb_recycle(i+1); //此处后续pid与占用位置不重合，不会出问题
+                pcb_recycle(pcb[i].pid,pcb[i].tid); //此处后续pid与占用位置不重合，不会出问题
                 do_kill = 1;
             }
         }
         return do_kill;
-    }
+    // }
 }
-int do_waitpid(pid_t pid){
-    if(pcb_flag[pid-1] == 1){
-        do_block(&(current_running->list),&(pcb[pid-1].wait_queue));
+int do_waitpid(pid_t pid){ //此处认为是等待主线程
+    int loc = -1;
+    for(int i=0;i<NUM_MAX_TASK;i++)
+        if(pcb_flag[i] == 1 && pcb[i].pid == pid && pcb[i].tid == 0){
+            loc = i;
+            break;
+        }
+    if(loc == -1)
+        return 0;
+    else{
+        do_block(&(current_running->list),&(pcb[loc].wait_queue));
         do_scheduler();
         return pid;
-    }
-    else
-    {
-        return 0;
     }
 }
 pid_t do_getpid(){
