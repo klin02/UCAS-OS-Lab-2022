@@ -169,18 +169,23 @@ int e1000_transmit(void *txpacket, int length)
 {
     /* TODO: [p5-task1] Transmit one packet from txpacket */
     local_flush_dcache();
+    uint32_t head = e1000_read_reg(e1000, E1000_TDH);
     uint32_t tail = e1000_read_reg(e1000, E1000_TDT);
+    uint32_t new_tail = (tail+1) % TXDESCS;
+    //如果循环数组已经满，直接返回0，do_net_send阻塞
+    if( new_tail == head )
+        return 0;
     memcpy((uint8_t *)tx_pkt_buffer[tail],(uint8_t *)txpacket,length);
     tx_desc_array[tail].length = (uint16_t)length;
-    uint32_t new_tail = (tail+1) % TXDESCS;
+    tx_desc_array[tail].status = 0;
     e1000_write_reg(e1000, E1000_TDT, new_tail);
     local_flush_dcache();
     //等待传输完毕标志
-    while(tx_desc_array[tail].status == 0)
-        local_flush_dcache();
+    // while(tx_desc_array[tail].status == 0)
+    //     local_flush_dcache();
     // uint32_t hhead = e1000_read_reg(e1000, E1000_TDH);
     // uint8_t pldst = tx_desc_array[tail].status;
-    tx_desc_array[tail].status = 0;
+    // tx_desc_array[tail].status = 0;
     local_flush_dcache();
     return length;   
 }
@@ -194,14 +199,16 @@ int e1000_poll(void *rxbuffer)
 {
     /* TODO: [p5-task2] Receive one packet and put it into rxbuffer */
     local_flush_dcache();
+    uint32_t head = e1000_read_reg(e1000, E1000_RDH);
     uint32_t tail = e1000_read_reg(e1000, E1000_RDT);
     uint32_t new_tail = (tail+1) % RXDESCS;
-    while(rx_desc_array[new_tail].status == 0)\
-    {
-        local_flush_dcache();
-    }
-        
-    
+    // while(rx_desc_array[new_tail].status == 0)\
+    // {
+    //     local_flush_dcache();
+    // }
+    if(new_tail == head)
+        return 0;
+
     // uint32_t hhead = e1000_read_reg(e1000, E1000_RDH);
     // uint8_t pldst = rx_desc_array[tail].status;
 

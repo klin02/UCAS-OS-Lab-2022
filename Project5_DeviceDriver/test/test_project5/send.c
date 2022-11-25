@@ -30,15 +30,24 @@ int main(void)
 {
     int print_location = 0;
     uint32_t *addr[4] = {buffer0, buffer1, buffer2, buffer3};
-
+    int iteration = 1;
     sys_move_cursor(0, print_location);
     printf("> [SEND] start send package.               \n");
 
-    for(int i = 0; i < 4; i++) {
-        sys_net_send(addr[i], len[i]);
-        sys_move_cursor(0, print_location);
-        printf("> [SEND] totally send package %d/%d !         \n", i + 1, 4);
+    while(1){
+        for(int i = 0; i < 4; i++) {
+            sys_net_send(addr[i], len[i]);
+            // sys_move_cursor(0, print_location);
+            // printf("> [SEND] totally send package %d/%d iteration %d!         \n", i + 1, 4, iteration);
+        }
+        iteration++;     
+        if(iteration % 50 ==0)
+        {
+            sys_move_cursor(0, print_location);
+            printf("> [SEND] totally send package iteration %d!         \n", iteration);
+        }   
     }
+
 
     return 0;
 }

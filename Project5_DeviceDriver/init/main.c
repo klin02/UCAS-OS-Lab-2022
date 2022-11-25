@@ -179,12 +179,14 @@ pid_t init_pcb(char *name, int argc, char *argv[])
     int ppid;
     //shell使用默认值，其余继承父值
     if(isshell==1){
-    //初始化ready queue
-    list_init(&ready_queue);
-    //part2:初始化sleep queue
-    list_init(&sleep_queue);     
-    mask = 3;   
-    ppid = 0;
+        //初始化ready queue
+        list_init(&ready_queue);
+        //part2:初始化sleep queue
+        list_init(&sleep_queue);  
+        list_init(&send_block_queue);
+        list_init(&recv_block_queue);   
+        mask = 3;   
+        ppid = 0;
     }
     else{
         mask = current_running -> mask;
