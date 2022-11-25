@@ -96,15 +96,50 @@ static void e1000_configure_tx(void)
  **/
 static void e1000_configure_rx(void)
 {
+    uint64_t mask = 0xffffffff;
+
     /* TODO: [p5-task2] Set e1000 MAC Address to RAR[0] */
+    uint64_t mac_addr = 0;
+    for(int i=5;i>=0;i--)
+        mac_addr = (mac_addr << 8) | enetaddr[i];
+    uint32_t mac_low = (uint32_t)(mac_addr & mask);
+    uint32_t mac_high = (uint32_t)(mac_addr >> 32);
+    mac_high = mac_high | E1000_RAH_AV;
+    e1000_write_reg_array(e1000, E1000_RA, 0, mac_low);
+    e1000_write_reg_array(e1000, E1000_RA, 1, mac_high);
 
     /* TODO: [p5-task2] Initialize rx descriptors */
+    for(int i=0;i<RXDESCS;i++)
+    {
+        rx_desc_array[i].addr = (uint64_t)(kva2pa((uintptr_t)rx_pkt_buffer[i]));
+        rx_desc_array[i].length = 0;
+        rx_desc_array[i].csum = 0;
+        rx_desc_array[i].status = 0;
+        rx_desc_array[i].errors = 0;
+        rx_desc_array[i].special = 0;
+    }
 
     /* TODO: [p5-task2] Set up the Rx descriptor base address and length */
+    //RDBAL RDBAH RDLEN
+    uint64_t base = kva2pa((uint64_t)rx_desc_array);
+    uint32_t baselow = (uint32_t)(base & mask);
+    uint32_t basehigh = (uint32_t)(base >> 32);
+    uint32_t bytelen = (uint32_t)(RXDESCS * sizeof(struct e1000_tx_desc));
+    e1000_write_reg(e1000, E1000_RDBAL, baselow);
+    e1000_write_reg(e1000, E1000_RDBAH, basehigh);
+    e1000_write_reg(e1000, E1000_RDLEN, bytelen);
 
     /* TODO: [p5-task2] Set up the HW Rx Head and Tail descriptor pointers */
+    //RDH RDT
+    uint32_t org_tail = (uint32_t)(RXDESCS-1);
+    e1000_write_reg(e1000, E1000_RDH, 0);
+    e1000_write_reg(e1000, E1000_RDT, org_tail);
 
     /* TODO: [p5-task2] Program the Receive Control Register */
+    //RCTL
+    uint32_t rctl_val = (E1000_RCTL_EN | E1000_RCTL_BAM | E1000_RCTL_SZ_2048) & ~E1000_RCTL_BSEX;
+    e1000_write_reg(e1000, E1000_RCTL, rctl_val);
+    local_flush_dcache();
 
     /* TODO: [p5-task4] Enable RXDMT0 Interrupt */
 }
@@ -142,9 +177,7 @@ int e1000_transmit(void *txpacket, int length)
     local_flush_dcache();
     //等待传输完毕标志
     while(tx_desc_array[tail].status == 0)
-    {
         local_flush_dcache();
-    }
     // uint32_t hhead = e1000_read_reg(e1000, E1000_TDH);
     // uint8_t pldst = tx_desc_array[tail].status;
     tx_desc_array[tail].status = 0;
@@ -160,6 +193,29 @@ int e1000_transmit(void *txpacket, int length)
 int e1000_poll(void *rxbuffer)
 {
     /* TODO: [p5-task2] Receive one packet and put it into rxbuffer */
+    local_flush_dcache();
+    uint32_t tail = e1000_read_reg(e1000, E1000_RDT);
+    uint32_t new_tail = (tail+1) % RXDESCS;
+    while(rx_desc_array[new_tail].status == 0)\
+    {
+        local_flush_dcache();
+    }
+        
+    
+    // uint32_t hhead = e1000_read_reg(e1000, E1000_RDH);
+    // uint8_t pldst = rx_desc_array[tail].status;
 
-    return 0;
+    int length = rx_desc_array[new_tail].length;
+    memcpy((uint8_t *)rxbuffer,(uint8_t *)rx_pkt_buffer[new_tail],length);
+
+    rx_desc_array[new_tail].length = 0;
+    rx_desc_array[new_tail].csum = 0;
+    rx_desc_array[new_tail].status = 0;
+    rx_desc_array[new_tail].errors = 0;
+    rx_desc_array[new_tail].special = 0;
+
+    e1000_write_reg(e1000, E1000_RDT, new_tail);
+    local_flush_dcache();
+
+    return length;
 }
