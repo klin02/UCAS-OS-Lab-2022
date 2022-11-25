@@ -55,12 +55,40 @@ static void e1000_reset(void)
 static void e1000_configure_tx(void)
 {
     /* TODO: [p5-task1] Initialize tx descriptors */
+    for(int i=0;i<TXDESCS;i++){
+        tx_desc_array[i].addr = (uint64_t)(kva2pa((uintptr_t)tx_pkt_buffer[i]));
+        tx_desc_array[i].length = 0;
+        tx_desc_array[i].cso = 0;
+        tx_desc_array[i].cmd = (uint8_t)(~E1000_TXD_CMD_DEXT & (E1000_TXD_CMD_RS | E1000_TXD_CMD_EOP));
+        tx_desc_array[i].status = 0; //将存储发送状态
+        tx_desc_array[i].css = 0;
+        tx_desc_array[i].special = 0;
+    }
 
     /* TODO: [p5-task1] Set up the Tx descriptor base address and length */
+    //TDBAL TDBAH TDLEN
+    uint64_t base = kva2pa((uint64_t)tx_desc_array);
+    uint64_t mask = 0xffffffff;
+    uint32_t baselow = (uint32_t)(base & mask);
+    uint32_t basehigh = (uint32_t)(base >> 32);
+    uint32_t bytelen = (uint32_t)(TXDESCS * sizeof(struct e1000_tx_desc));
+    e1000_write_reg(e1000, E1000_TDBAL, baselow);
+    e1000_write_reg(e1000, E1000_TDBAH, basehigh);
+    e1000_write_reg(e1000, E1000_TDLEN, bytelen);
 
 	/* TODO: [p5-task1] Set up the HW Tx Head and Tail descriptor pointers */
+    //TDH TDT
+    e1000_write_reg(e1000, E1000_TDH, 0);
+    e1000_write_reg(e1000, E1000_TDT, 0);
 
     /* TODO: [p5-task1] Program the Transmit Control Register */
+    //TCTL
+    //针对位数不为1的部分，人为计算位移
+    uint32_t tctl_ct  = (uint32_t)(0x10 << 4);
+    uint32_t tctl_cold = (uint32_t)(0x40 << 12);
+    uint32_t tctl_val = E1000_TCTL_EN | E1000_TCTL_PSP | tctl_ct | tctl_cold;
+    e1000_write_reg(e1000, E1000_TCTL, tctl_val);
+    local_flush_dcache();
 }
 
 /**
@@ -105,8 +133,23 @@ void e1000_init(void)
 int e1000_transmit(void *txpacket, int length)
 {
     /* TODO: [p5-task1] Transmit one packet from txpacket */
-
-    return 0;
+    local_flush_dcache();
+    uint32_t tail = e1000_read_reg(e1000, E1000_TDT);
+    memcpy((uint8_t *)tx_pkt_buffer[tail],(uint8_t *)txpacket,length);
+    tx_desc_array[tail].length = (uint16_t)length;
+    uint32_t new_tail = (tail+1) % TXDESCS;
+    e1000_write_reg(e1000, E1000_TDT, new_tail);
+    local_flush_dcache();
+    //等待传输完毕标志
+    while(tx_desc_array[tail].status == 0)
+    {
+        local_flush_dcache();
+    }
+    // uint32_t hhead = e1000_read_reg(e1000, E1000_TDH);
+    // uint8_t pldst = tx_desc_array[tail].status;
+    tx_desc_array[tail].status = 0;
+    local_flush_dcache();
+    return length;   
 }
 
 /**

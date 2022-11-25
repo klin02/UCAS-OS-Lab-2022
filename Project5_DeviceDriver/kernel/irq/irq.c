@@ -66,7 +66,9 @@ void init_exception()
     irq_table[IRQC_S_TIMER] = &handle_irq_timer;
     /* TODO: [p2-task3] set up the entrypoint of exceptions */
     //调用汇编函数setup_exception 完成相关操作
+    printk(">> before setup expt\n");
     setup_exception();
+    printk(">> end setup expt\n");
 }
 
 

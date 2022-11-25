@@ -100,7 +100,7 @@ struct e1000_rx_desc {
 struct e1000_tx_desc {
 	uint64_t addr;	    /* Address of the descriptor's data buffer */
     uint16_t length;	/* Data buffer length */
-    uint8_t cso;	    /* Checksum offset */
+    uint8_t cso;	    /* Checksum offset */ //校验码相对位置
     uint8_t cmd;	    /* Descriptor control */
     uint8_t status;	    /* Descriptor status */
     uint8_t css;	    /* Checksum start */

@@ -38,9 +38,11 @@
 #include <os/time.h>
 #include <os/ioremap.h>
 #include <os/smp.h>
+#include <os/net.h>
 #include <sys/syscall.h>
 #include <screen.h>
 #include <e1000.h>
+#include <plic.h>
 #include <printk.h>
 #include <assert.h>
 #include <type.h>
@@ -378,6 +380,8 @@ static void init_syscall(void)
     syscall[SYSCALL_SNAP_INIT]      = (long(*)())do_snap_init;
     syscall[SYSCALL_SNAP_SHOT]      = (long(*)())do_snap_shot;
     syscall[SYSCALL_VA2PA]          = (long(*)())do_va2pa;
+    syscall[SYSCALL_NET_SEND]       = (long(*)())do_net_send;
+    syscall[SYSCALL_NET_RECV]       = (long(*)())do_net_recv;
 }
 
 int main(void)
@@ -391,20 +395,13 @@ int main(void)
 
     // Init jump table provided by kernel and bios(ΦωΦ)
     init_jmptab();
-    printk("Enter main\n");
+    // printk("Enter main\n");
     // Init task information (〃'▽'〃)
     init_task_info();
 
     // 新增：初始化可回收内存分配机制
     init_mm();//为获取镜像扇区数 需要在task info后完成
-
-    // test_swap_write();
-
-    // Init Process Control Blocks |•'-'•) ✧
-    init_pcb(shellptr,0,NULL); //只初始化shell进程
-    init_idle_pcb();
-    printk("> [INIT] PCB initialization succeeded.\n");
-
+    
     // Read Flatten Device Tree (｡•ᴗ-)_
     time_base = bios_read_fdt(TIMEBASE);
     e1000 = (volatile uint8_t *)bios_read_fdt(EHTERNET_ADDR);
@@ -416,6 +413,11 @@ int main(void)
     plic_addr = (uintptr_t)ioremap((uint64_t)plic_addr, 0x4000 * NORMAL_PAGE_SIZE);
     e1000 = (uint8_t *)ioremap((uint64_t)e1000, 8 * NORMAL_PAGE_SIZE);
     printk("> [INIT] IOremap initialization succeeded.\n");
+
+    // Init Process Control Blocks |•'-'•) ✧
+    init_pcb(shellptr,0,NULL); //只初始化shell进程
+    init_idle_pcb();
+    printk("> [INIT] PCB initialization succeeded.\n");
 
     // Init lock mechanism o(´^｀)o
     init_locks();
@@ -430,8 +432,8 @@ int main(void)
     printk("> [INIT] Interrupt processing initialization succeeded.\n");
 
     // TODO: [p5-task4] Init plic
-    // plic_init(plic_addr, nr_irqs);
-    // printk("> [INIT] PLIC initialized successfully. addr = 0x%lx, nr_irqs=0x%x\n", plic_addr, nr_irqs);
+    plic_init(plic_addr, nr_irqs);
+    printk("> [INIT] PLIC initialized successfully. addr = 0x%lx, nr_irqs=0x%x\n", plic_addr, nr_irqs);
 
     // Init network device
     e1000_init();
