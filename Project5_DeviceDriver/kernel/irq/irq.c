@@ -21,7 +21,8 @@ handler_t exc_table[EXCC_COUNT];
 
 void echoinfo(){
     // printk("Enter expt entry!\n");
-    printk("before ret from expt!\n");
+    if(get_current_cpu_id()==1)
+    printk("after sub savecontext\n");
 }
 void interrupt_helper(regs_context_t *regs, uint64_t stval, uint64_t scause)
 {
@@ -29,7 +30,11 @@ void interrupt_helper(regs_context_t *regs, uint64_t stval, uint64_t scause)
     // call corresponding handler by the value of `scause`
     // printk("Enter interrupt helper! scause %x\n",scause);
     //相关定义见csr.h
+    //     if(get_current_cpu_id()==1)
+    // printk("before intr helper lock\n");
     lock_kernel();
+    //         if(get_current_cpu_id()==1)
+    // printk("after intr helper lock\n");
     current_running = (get_current_cpu_id() ==0) ? current_running_0 : current_running_1;           
     uint64_t type = scause & SCAUSE_IRQ_FLAG; //除最高位全零
     uint64_t code = scause & ~SCAUSE_IRQ_FLAG; //最高位为零
@@ -57,7 +62,11 @@ void handle_irq_ext(regs_context_t *regs, uint64_t stval, uint64_t scause)
     // Note: plic_claim and plic_complete will be helpful ...
     //调用claim指导中断源
     // printk("Enter irq ext!\n");
+    // if(get_current_cpu_id()==1)
+    //     printk("> sub core enter irq ext!\n");
     uint32_t hwirq = plic_claim();
+    // if(get_current_cpu_id()==1)
+    //     printk("> hwirq: %d\n",hwirq);
     if(hwirq == PLIC_E1000_PYNQ_IRQ){
         net_handle_irq();
         plic_complete(hwirq);
