@@ -4,6 +4,7 @@
 #include <os/string.h>
 #include <os/list.h>
 #include <os/smp.h>
+#include <assert.h>
 
 //(type *)0强制转化为地址为0的type类型指针。下述宏定义获得了member成员相对于type指针入口的偏移
 #define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
@@ -17,6 +18,9 @@
 LIST_HEAD(send_block_queue);
 LIST_HEAD(recv_block_queue);
 
+//堵塞处理流程：
+    //1. 使能相关处理中断
+    //2. 堵塞当前状态并调度
 int do_net_send(void *txpacket, int length)
 {
     // TODO: [p5-task1] Transmit one network packet via e1000 device
@@ -33,6 +37,8 @@ int do_net_send(void *txpacket, int length)
             while(1){
                 tmp = e1000_transmit(txpacket,length);
                 if(tmp == 0){
+                    e1000_write_reg(e1000, E1000_IMS, E1000_IMS_TXQE);
+                    local_flush_dcache();
                     do_block(&(current_running->list),&send_block_queue);
                     do_scheduler();                    
                 }
@@ -46,6 +52,8 @@ int do_net_send(void *txpacket, int length)
             while(1){
                 tmp = e1000_transmit(txpacket,frame_size);
                 if(tmp ==0){
+                    e1000_write_reg(e1000, E1000_IMS, E1000_IMS_TXQE);
+                    local_flush_dcache();
                     do_block(&(current_running->list),&send_block_queue);
                     do_scheduler();
                 }
@@ -72,6 +80,8 @@ int do_net_recv(void *rxbuffer, int pkt_num, int *pkt_lens)
             tmp = e1000_poll(rxbuffer);
             if(tmp == 0)
             {
+                e1000_write_reg(e1000, E1000_IMS, E1000_IMS_RXDMT0);
+                local_flush_dcache();
                 do_block(&(current_running->list),&recv_block_queue);
                 do_scheduler();
             }
@@ -120,4 +130,40 @@ void check_net_recv(){
 void net_handle_irq(void)
 {
     // TODO: [p5-task4] Handle interrupts from network device
+    //处理流程
+        //1.读取类型
+        //2.禁用中断
+        //3.进行处理
+    // printk("Enter net irq!\n");
+    local_flush_dcache();
+    uint32_t icr_val = e1000_read_reg(e1000, E1000_ICR);
+    uint32_t is_txqe = icr_val & E1000_ICR_TXQE;
+    uint32_t is_rxcmt0 = icr_val & E1000_ICR_RXDMT0;
+    int do_handle= 0;
+    if(is_txqe != 0)
+    {
+        do_handle ++;
+        // printk(">>> irq txqe\n");
+        // uint32_t old_ims = e1000_read_reg(e1000, E1000_IMS);
+        e1000_write_reg(e1000, E1000_IMC, E1000_IMC_TXQE);
+        local_flush_dcache();
+        // latency(1);
+        // uint32_t new_ims = e1000_read_reg(e1000, E1000_IMS);
+        // printk(">>>> old ims %x new ims %x\n",old_ims,new_ims);
+        check_net_send();
+        // printk(">>> end txqe\n");
+    }
+    if(is_rxcmt0 != 0)
+    {
+        do_handle++;
+        // printk("irq rxdmt0\n");
+        e1000_write_reg(e1000, E1000_IMC, E1000_IMC_RXDMT0);
+        local_flush_dcache();
+        check_net_recv();
+    }
+    if(do_handle == 0)
+    {
+        printk("Err: net handle %x unknown!\n",icr_val);
+        assert(0);
+    }
 }

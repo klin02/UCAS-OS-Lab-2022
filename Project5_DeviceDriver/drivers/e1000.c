@@ -42,9 +42,12 @@ static void e1000_reset(void)
 	 */
     latency(1);
 
+    //禁用所有网卡中断
 	/* Clear interrupt mask to stop board from generating interrupts */
     e1000_write_reg(e1000, E1000_IMC, 0xffffffff);
-
+    local_flush_dcache();
+    while (0 != e1000_read_reg(e1000, E1000_IMS));
+    //清除当前中断源
     /* Clear any pending interrupt events. */
     while (0 != e1000_read_reg(e1000, E1000_ICR)) ;
 }
@@ -54,6 +57,9 @@ static void e1000_reset(void)
  **/
 static void e1000_configure_tx(void)
 {
+    //task4 初始化的时候关中断
+    e1000_write_reg(e1000, E1000_IMC, E1000_IMC_TXQE);
+    
     /* TODO: [p5-task1] Initialize tx descriptors */
     for(int i=0;i<TXDESCS;i++){
         tx_desc_array[i].addr = (uint64_t)(kva2pa((uintptr_t)tx_pkt_buffer[i]));
@@ -96,6 +102,9 @@ static void e1000_configure_tx(void)
  **/
 static void e1000_configure_rx(void)
 {
+    //task4 初始化的时候关中断
+    e1000_write_reg(e1000, E1000_IMC, E1000_IMC_RXDMT0);
+
     uint64_t mask = 0xffffffff;
 
     /* TODO: [p5-task2] Set e1000 MAC Address to RAR[0] */

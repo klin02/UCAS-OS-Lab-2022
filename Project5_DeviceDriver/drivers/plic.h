@@ -10,7 +10,7 @@ struct plic_handler {
 	void		*enable_base;
 } plic_handlers;
 
-#define PLIC_E1000_PYNQ_IRQ 2
+#define PLIC_E1000_PYNQ_IRQ 3
 #define PLIC_E1000_QEMU_IRQ 33
 
 #define MAX_DEVICES			1024
@@ -20,6 +20,7 @@ struct plic_handler {
  * Each interrupt source has a priority register associated with it.
  * We always hardwire it to one in Linux.
  */
+//优先权2阈值，每个中断源相差4，从1开始
 #define PRIORITY_BASE			0
 #define PRIORITY_PER_ID		    4
 
@@ -27,6 +28,7 @@ struct plic_handler {
  * Each hart context has a vector of interrupt enable bits associated with it.
  * There's one bit for each interrupt source.
  */
+//使能基址，每个上下文间隔80
 #define ENABLE_BASE			0x2000
 #define ENABLE_PER_HART		0x80
 
@@ -35,6 +37,7 @@ struct plic_handler {
  * now there's only two: a source priority threshold over which the hart will
  * take an interrupt, and a register to claim interrupts.
  */
+//上下文基址，每个间隔1000，其中00偏移为门限，04偏移为claim
 #define CONTEXT_BASE			0x200000
 #define CONTEXT_PER_HART		0x1000
 #define CONTEXT_THRESHOLD		0x00

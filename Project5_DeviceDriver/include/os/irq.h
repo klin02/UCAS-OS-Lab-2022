@@ -64,6 +64,7 @@ typedef void (*handler_t)(regs_context_t*, uint64_t, uint64_t);
 extern handler_t irq_table[IRQC_COUNT];
 extern handler_t exc_table[EXCC_COUNT];
 
+extern void echoinfo();
 extern void interrupt_helper(regs_context_t *regs, uint64_t stval, uint64_t scause);
 
 /* exception handler entery */
@@ -83,5 +84,5 @@ extern void enable_interrupt(void);
 extern void disable_interrupt(void);
 extern void enable_preempt(void);
 extern void disable_preempt(void);
-
+extern void enable_ext_interrupt(void);
 #endif

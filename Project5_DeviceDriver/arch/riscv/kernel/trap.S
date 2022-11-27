@@ -15,8 +15,11 @@ ENTRY(setup_exception)
 
   # 核间中断，时间中断，中断控制器中断
   # li t0, SIE_SSIE | SIE_STIE | SIE_SEIE
-  li t0, SIE_STIE
+  li t0, SIE_STIE | SIE_SSIE
   csrw CSR_SIE,t0
+
+  # li t0, SIE_SEIE
+  # csrs CSR_SIE,t0
     
   jr ra
 ENDPROC(setup_exception)

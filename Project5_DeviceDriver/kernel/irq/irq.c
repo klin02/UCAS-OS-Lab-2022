@@ -5,7 +5,9 @@
 #include <os/kernel.h>
 #include <os/smp.h>
 #include <os/mm.h>
+#include <os/net.h>
 #include <e1000.h>
+#include <plic.h>
 #include <pgtable.h>
 #include <printk.h>
 #include <assert.h>
@@ -17,10 +19,15 @@
 handler_t irq_table[IRQC_COUNT];
 handler_t exc_table[EXCC_COUNT];
 
+void echoinfo(){
+    // printk("Enter expt entry!\n");
+    printk("before ret from expt!\n");
+}
 void interrupt_helper(regs_context_t *regs, uint64_t stval, uint64_t scause)
 {
     // TODO: [p2-task3] & [p2-task4] interrupt handler.
     // call corresponding handler by the value of `scause`
+    // printk("Enter interrupt helper! scause %x\n",scause);
     //相关定义见csr.h
     lock_kernel();
     current_running = (get_current_cpu_id() ==0) ? current_running_0 : current_running_1;           
@@ -38,8 +45,8 @@ void handle_irq_timer(regs_context_t *regs, uint64_t stval, uint64_t scause)
     // TODO: [p2-task4] clock interrupt handler.
     // Note: use bios_set_timer to reset the timer and remember to reschedule
     check_sleeping();
-    check_net_send();
-    check_net_recv();
+    // check_net_send();
+    // check_net_recv();
     set_timer(get_ticks()+TIMER_INTERVAL);
     do_scheduler();
 }
@@ -48,6 +55,19 @@ void handle_irq_ext(regs_context_t *regs, uint64_t stval, uint64_t scause)
 {
     // TODO: [p5-task4] external interrupt handler.
     // Note: plic_claim and plic_complete will be helpful ...
+    //调用claim指导中断源
+    // printk("Enter irq ext!\n");
+    uint32_t hwirq = plic_claim();
+    if(hwirq == PLIC_E1000_PYNQ_IRQ){
+        net_handle_irq();
+        plic_complete(hwirq);
+        // printk(">> after plic complete\n");
+    }
+    else{
+        printk("Err hwirq: %d\n",hwirq);
+        plic_complete(hwirq);
+        handle_other(regs,stval,scause);
+    }
 }
 
 void init_exception()
@@ -67,6 +87,7 @@ void init_exception()
     for(int i=0;i<IRQC_COUNT;i++)
         irq_table[i] = &handle_other;
     irq_table[IRQC_S_TIMER] = &handle_irq_timer;
+    irq_table[IRQC_S_EXT]   = &handle_irq_ext;
     /* TODO: [p2-task3] set up the entrypoint of exceptions */
     //调用汇编函数setup_exception 完成相关操作
     printk(">> before setup expt\n");

@@ -453,11 +453,21 @@ int main(void)
     // printk("Try bios success!\n");
     // while(1);
     smp_init();
-    lock_kernel(); //只能有一个CPU访问内核空间,调度时再释放。
-    wakeup_other_hart();
+    // lock_kernel(); //只能有一个CPU访问内核空间,调度时再释放。
+    // wakeup_other_hart();
     // unlock_kernel();
     // while(1);
-    //enable_preempt();
+    asm volatile(
+        "nop\n\t"
+        "mv tp,%0\n\t"
+        :
+        :"r"(current_running)
+    );
+    printk(">> before enable preempt\n");
+    // enable_preempt();
+
+    enable_ext_interrupt();
+    printk(">> after enable preempt\n");
     }
     else{
         lock_kernel();
@@ -465,6 +475,7 @@ int main(void)
         // while(1);
         current_running = current_running_1;
         setup_exception();
+        enable_ext_interrupt();
     }
 
     // TODO: [p2-task4] Setup timer interrupt and enable all interrupt globally
