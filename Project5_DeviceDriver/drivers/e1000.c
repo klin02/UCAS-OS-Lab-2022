@@ -9,8 +9,8 @@
 volatile uint8_t *e1000;  // use virtual memory address
 
 // E1000 Tx & Rx Descriptors
-static struct e1000_tx_desc tx_desc_array[TXDESCS] __attribute__((aligned(16)));
-static struct e1000_rx_desc rx_desc_array[RXDESCS] __attribute__((aligned(16)));
+struct e1000_tx_desc tx_desc_array[TXDESCS] __attribute__((aligned(16)));
+struct e1000_rx_desc rx_desc_array[RXDESCS] __attribute__((aligned(16)));
 
 // E1000 Tx & Rx packet buffer
 static char tx_pkt_buffer[TXDESCS][TX_PKT_SIZE];

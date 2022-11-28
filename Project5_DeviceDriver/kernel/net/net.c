@@ -97,9 +97,9 @@ int do_net_recv(void *rxbuffer, int pkt_num, int *pkt_lens)
 
 void check_net_send(){
     local_flush_dcache();
-    uint32_t head = e1000_read_reg(e1000, E1000_TDH);
     uint32_t tail = e1000_read_reg(e1000, E1000_TDT);
-    if( (tail+1)%TXDESCS != head)
+    uint32_t new_tail = (tail + 1)%TXDESCS;
+    if( tx_desc_array[new_tail].status != 0)
     {
         while(send_block_queue.prev != NULL){
             pcb_t * tmp = list_entry(send_block_queue.prev,pcb_t,list);
@@ -113,9 +113,9 @@ void check_net_send(){
 
 void check_net_recv(){
     local_flush_dcache();
-    uint32_t head = e1000_read_reg(e1000, E1000_RDH);
     uint32_t tail = e1000_read_reg(e1000, E1000_RDT);
-    if( (tail+1)%RXDESCS != head)
+    uint32_t new_tail = (tail + 1)%RXDESCS;
+    if( rx_desc_array[new_tail].status != 0)
     {
         while(recv_block_queue.prev != NULL){
             pcb_t * tmp = list_entry(recv_block_queue.prev,pcb_t,list);
