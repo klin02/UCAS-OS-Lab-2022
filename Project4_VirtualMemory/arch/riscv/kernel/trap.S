@@ -14,7 +14,8 @@ ENTRY(setup_exception)
   csrw CSR_SSTATUS,t0
 
   # 核间中断，时间中断，中断控制器中断
-  li t0, SIE_SSIE | SIE_STIE | SIE_SEIE
+  # li t0, SIE_SSIE | SIE_STIE | SIE_SEIE
+  li t0, SIE_STIE
   csrw CSR_SIE,t0
     
   jr ra
