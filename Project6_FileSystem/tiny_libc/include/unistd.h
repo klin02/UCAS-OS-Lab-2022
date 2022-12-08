@@ -90,6 +90,6 @@ int sys_fwrite(int fd, char *buff, int length);
 int sys_fclose(int fd);
 int sys_ln(char *src_path, char *dst_path);
 int sys_rm(char *path);
-int sys_lseek(int fd, int offset, int whence);
+int sys_lseek(int fd, int offset, int whence,int rw);
 
 #endif

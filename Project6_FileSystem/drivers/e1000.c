@@ -211,7 +211,7 @@ int e1000_poll(void *rxbuffer)
     uint32_t head = e1000_read_reg(e1000, E1000_RDH);
     uint32_t tail = e1000_read_reg(e1000, E1000_RDT);
     uint32_t new_tail = (tail+1) % RXDESCS;
-    // while(rx_desc_array[new_tail].status == 0)\
+    // while(rx_desc_array[new_tail].status == 0)
     // {
     //     local_flush_dcache();
     // }

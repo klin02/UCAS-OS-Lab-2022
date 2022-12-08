@@ -30,12 +30,15 @@
 #include <unistd.h>
 #include <string.h>
 #include <ctype.h>
+#include <stddef.h>
 
 #define SHELL_BEGIN 20 //分屏，使用下半部分
 #define BUF_LEN 50
 #define CMD_LEN 10
 #define OP_NUM 10
 #define OP_LEN 20
+#define DIR_LEVEL 5
+#define DIR_LEN 20
 char strbuf[BUF_LEN];
 int strptr;
 char cmdbuf[CMD_LEN];
@@ -45,7 +48,10 @@ int opptr;
 char *argv[OP_NUM];
 int argc;
 int isbackground; //后台进程
-
+char dir[DIR_LEVEL][DIR_LEN];
+int dir_level = 0;
+// TODO [P6-task1]: mkfs, statfs, cd, mkdir, rmdir, ls
+// TODO [P6-task2]: touch, cat, ln, ls -l, rm
 void backspace();
 void clear();
 void parse();
@@ -53,13 +59,33 @@ void ps();
 pid_t exec();
 void kill();
 void taskset();
-
+void mkfs();
+void statfs();
+void cd();
+void mkdir();
+void rmdir();
+void ls();
+void touch();
+void cat();
+void ln();
+void rm();
+int split_path(char *path,char str[3][20]);
 char oplist[][10]=  {
                     "clear",
                     "ps",
                     "exec",
                     "kill",
-                    "taskset"
+                    "taskset",
+                    "mkfs",
+                    "statfs",
+                    "cd",
+                    "mkdir",
+                    "rmdir",
+                    "ls",
+                    "touch",
+                    "cat",
+                    "ln",
+                    "rm"
                     };
 int main(void)
 {
@@ -81,7 +107,10 @@ int main(void)
         //init buf
         bzero(strbuf,BUF_LEN);
         strptr=0;
-        printf("> root@UCAS_OS: ");
+        printf("> root@UCAS_OS:~");
+        for(int i=0;i<dir_level;i++)
+            printf("/%s",dir[i]);
+        printf("$ ");
         while(1){
             while((ch = sys_getchar())==-1) //;
             {
@@ -111,11 +140,21 @@ int main(void)
         // TODO [P6-task1]: mkfs, statfs, cd, mkdir, rmdir, ls
         // TODO [P6-task2]: touch, cat, ln, ls -l, rm
         parse();
-        if     (strcmp(cmdbuf,oplist[0])==0) clear();
-        else if(strcmp(cmdbuf,oplist[1])==0) ps();
-        else if(strcmp(cmdbuf,oplist[2])==0) exec();
-        else if(strcmp(cmdbuf,oplist[3])==0) kill();
-        else if(strcmp(cmdbuf,oplist[4])==0) taskset();
+        if     (strcmp(cmdbuf,oplist[ 0])==0) clear();
+        else if(strcmp(cmdbuf,oplist[ 1])==0) ps();
+        else if(strcmp(cmdbuf,oplist[ 2])==0) exec();
+        else if(strcmp(cmdbuf,oplist[ 3])==0) kill();
+        else if(strcmp(cmdbuf,oplist[ 4])==0) taskset();
+        else if(strcmp(cmdbuf,oplist[ 5])==0) mkfs();
+        else if(strcmp(cmdbuf,oplist[ 6])==0) statfs();
+        else if(strcmp(cmdbuf,oplist[ 7])==0) cd();
+        else if(strcmp(cmdbuf,oplist[ 8])==0) mkdir();
+        else if(strcmp(cmdbuf,oplist[ 9])==0) rmdir();
+        else if(strcmp(cmdbuf,oplist[10])==0) ls();
+        else if(strcmp(cmdbuf,oplist[11])==0) touch();
+        else if(strcmp(cmdbuf,oplist[12])==0) cat();
+        else if(strcmp(cmdbuf,oplist[13])==0) ln();
+        else if(strcmp(cmdbuf,oplist[14])==0) rm();
         else if(cmdbuf[0]=='\0') ;                      //允许直接换行
         else   printf("Error: Unknown Command %s\n",cmdbuf); 
         //printf("%s %s\n",cmdbuf,filebuf);
@@ -141,7 +180,9 @@ void parse(){
     for(int i=0;i<OP_NUM;i++)
         bzero(opbuf[i],OP_LEN);
     opptr=0;
-    bzero(argv,OP_NUM);
+    // bzero(argv,OP_NUM);
+    for(int i=0;i<OP_NUM;i++)
+        argv[i] = NULL;
     argc=0;
     isbackground =0;
 
@@ -273,4 +314,59 @@ void taskset(){
     else{
         printf("Unknown Taskset\n");
     }
+}
+
+void mkfs(){sys_mkfs();}
+void statfs(){sys_statfs();}
+void cd(){
+    int status; //最低第i位表示第i个路径作用，1有效，0无效
+    int lvl;
+    char str[3][20];
+    int mask;
+    status = sys_cd(argv[0]);
+    lvl = split_path(argv[0],str);
+    for(int i=0;i<lvl;i++){
+        mask = 1<<i;
+        if((status & mask) !=0){//work
+            if(strcmp(str[i],"..")==0)
+                dir_level --;
+            else if(strcmp(str[i],".")==0)
+                ;
+            else
+                strcpy(dir[dir_level++],str[i]);
+        }
+    }
+}
+void mkdir(){sys_mkdir(argv[0]);}
+void rmdir(){sys_rmdir(argv[0]);}
+void ls(){
+    char *lstr = "-l";
+    int option = 0;
+    if(strcmp(lstr,argv[0])==0)
+        sys_ls(argv[1],1);
+    else
+        sys_ls(argv[0],0);
+}
+void touch(){sys_touch(argv[0]);}
+void cat(){sys_cat(argv[0]);}
+void ln(){sys_ln(argv[0],argv[1]);}
+void rm(){sys_rm(argv[0]);}
+
+int split_path(char *path,char str[3][20]){
+    int level = 0;
+    int ptr = 0;
+    for(int i=0;i<level;i++)
+            bzero(str[i],20);
+    for(int i=0;i<strlen(path);i++){
+            if(path[i] == '/'){
+                    str[level][ptr] = '\0';
+                    ptr = 0;
+                    level++;
+            }
+            else
+                    str[level][ptr++] = path[i];
+    }
+    str[level][ptr] = '\0';
+    level++;
+    return level;
 }

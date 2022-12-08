@@ -49,6 +49,7 @@
 #include <csr.h>
 #include <os/pthread.h>
 #include <pgtable.h>
+#include <os/fs.h>
 
 // 注意该地址应当与bootblock同步改变
 #define USER_INFO_ADDR 0xffffffc052400000
@@ -384,6 +385,21 @@ static void init_syscall(void)
     syscall[SYSCALL_VA2PA]          = (long(*)())do_va2pa;
     syscall[SYSCALL_NET_SEND]       = (long(*)())do_net_send;
     syscall[SYSCALL_NET_RECV]       = (long(*)())do_net_recv;
+    syscall[SYSCALL_FS_MKFS]        = (long(*)())do_mkfs;
+    syscall[SYSCALL_FS_STATFS]      = (long(*)())do_statfs;
+    syscall[SYSCALL_FS_CD]          = (long(*)())do_cd;
+    syscall[SYSCALL_FS_MKDIR]       = (long(*)())do_mkdir;
+    syscall[SYSCALL_FS_RMDIR]       = (long(*)())do_rmdir;
+    syscall[SYSCALL_FS_LS]          = (long(*)())do_ls;
+    syscall[SYSCALL_FS_TOUCH]       = (long(*)())do_touch;
+    syscall[SYSCALL_FS_CAT]         = (long(*)())do_cat;
+    syscall[SYSCALL_FS_FOPEN]       = (long(*)())do_fopen;
+    syscall[SYSCALL_FS_FREAD]       = (long(*)())do_fread;
+    syscall[SYSCALL_FS_FWRITE]      = (long(*)())do_fwrite;
+    syscall[SYSCALL_FS_FCLOSE]      = (long(*)())do_fclose;
+    syscall[SYSCALL_FS_LN]          = (long(*)())do_ln;
+    syscall[SYSCALL_FS_RM]          = (long(*)())do_rm;
+    syscall[SYSCALL_FS_LSEEK]       = (long(*)())do_lseek;
 }
 
 int main(void)
@@ -434,12 +450,12 @@ int main(void)
     printk("> [INIT] Interrupt processing initialization succeeded.\n");
 
     // TODO: [p5-task4] Init plic
-    plic_init(plic_addr, nr_irqs);
-    printk("> [INIT] PLIC initialized successfully. addr = 0x%lx, nr_irqs=0x%x\n", plic_addr, nr_irqs);
+    // plic_init(plic_addr, nr_irqs);
+    // printk("> [INIT] PLIC initialized successfully. addr = 0x%lx, nr_irqs=0x%x\n", plic_addr, nr_irqs);
 
-    // Init network device
-    e1000_init();
-    printk("> [INIT] E1000 device initialized successfully.\n");
+    // // Init network device
+    // e1000_init();
+    // printk("> [INIT] E1000 device initialized successfully.\n");
     flush_all();
     // Init system call table (0_0)
     init_syscall();
@@ -449,6 +465,7 @@ int main(void)
     init_screen();
     printk("> [INIT] SCREEN initialization succeeded.\n");
 
+    init_fs();
     // bios_sdwrite(0x50200000,8,32915);
     // printk("Try bios success!\n");
     // while(1);
@@ -466,7 +483,7 @@ int main(void)
     // printk(">> before enable preempt\n");
     // // enable_preempt();
 
-    enable_ext_interrupt();
+    // enable_ext_interrupt();
     // printk(">> after enable preempt\n");
     }
     else{
