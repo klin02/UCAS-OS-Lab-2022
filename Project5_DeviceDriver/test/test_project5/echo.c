@@ -18,6 +18,8 @@ void* send_pkt();
 void* recv_pkt();
 int main(void)
 {
+    sys_move_cursor(0,0);
+    printf("[echo]: start recv and send back\n");
     pthread_t recv;
     pthread_create(&recv, send_pkt, NULL);
     recv_pkt();

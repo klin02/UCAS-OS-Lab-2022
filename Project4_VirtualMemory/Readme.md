@@ -3,21 +3,14 @@
 ### Completion of TASK
 
 + TASK 1-6 均已完成（C-Core），且通过上板测试
-
 + 支持进程及线程回收
-
 + 添加自行测试程序`swap.c`及`snapshot.c`，分别测试swap功能和快照功能
-
 + 添加程序`idle.c`作为空泡进程，当就绪队列为空时，将调度至该进程
-
 + 更改kill逻辑
   + 取消进程组操作，杀死父进程后不再自动杀死子进程
   + kill时，将同步杀死该进程的所有线程
-
 + swap功能测试
-
   + 由于qemu上限制只能读取镜像内的扇区，如需测试该功能，需要在`Makefile`中`image`部分最后一行添加如下命令
-
     ```makefile
     dd if=/dev/zero of=$(DIR_BUILD)/image oflag=append conv=notrunc bs=32MB count=1
     ```
