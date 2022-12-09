@@ -450,12 +450,12 @@ int main(void)
     printk("> [INIT] Interrupt processing initialization succeeded.\n");
 
     // TODO: [p5-task4] Init plic
-    // plic_init(plic_addr, nr_irqs);
-    // printk("> [INIT] PLIC initialized successfully. addr = 0x%lx, nr_irqs=0x%x\n", plic_addr, nr_irqs);
+    plic_init(plic_addr, nr_irqs);
+    printk("> [INIT] PLIC initialized successfully. addr = 0x%lx, nr_irqs=0x%x\n", plic_addr, nr_irqs);
 
-    // // Init network device
-    // e1000_init();
-    // printk("> [INIT] E1000 device initialized successfully.\n");
+    // Init network device
+    e1000_init();
+    printk("> [INIT] E1000 device initialized successfully.\n");
     flush_all();
     // Init system call table (0_0)
     init_syscall();
@@ -483,7 +483,7 @@ int main(void)
     // printk(">> before enable preempt\n");
     // // enable_preempt();
 
-    // enable_ext_interrupt();
+    enable_ext_interrupt();
     // printk(">> after enable preempt\n");
     }
     else{

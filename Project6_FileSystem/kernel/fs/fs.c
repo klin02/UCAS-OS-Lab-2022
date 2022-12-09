@@ -607,7 +607,7 @@ int do_ls(char *path, int option)
     // TODO [P6-task1]: Implement do_ls
     // Note: argument 'option' serves for 'ls -l' in A-core
     char dir[DIR_LEVEL][NAME_LEN];
-    printk("ls path:%s\n",path);
+    // printk("ls path:%s\n",path);
     int level = split_path(path,dir);
     assert(level <= DIR_LEVEL);
     int index;
