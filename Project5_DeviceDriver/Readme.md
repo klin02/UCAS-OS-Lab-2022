@@ -15,7 +15,7 @@
 
 ## More Details
 
-+ debug过程可见[实验过程文档.md](实验过程文档.,md)
++ debug过程可见[实验过程文档.md](实验过程文档.md)
 + 问题解答详情可见[design_review.md](design_review.md)
   + 发送/接收中断描述符内容（代码及相关设置）
   + 网卡中断相关流程

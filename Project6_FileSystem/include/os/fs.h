@@ -6,7 +6,7 @@
 ------------------------------- KERNEL ------------------------------
 |     NAME      |    SECTOR NUM    |  SECTOR START  |  SECTOR END   |
 |   bootblock   |        1         |        0       |       0       |
-|    appinfo    |        1         |        1       | 0(os_size_loc)|
+|    appinfo    |  0(os_size_loc)  |        1       | 0(os_size_loc)|
 |    kernel     |        X         |        X       |       X       |
 
 ----------------------------FILE SYSTEM------------------------------
