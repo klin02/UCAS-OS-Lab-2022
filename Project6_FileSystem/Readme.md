@@ -11,7 +11,6 @@
 
 + qemu上使用`make run-net`和`make debug-net`进行运行和调试
 + 板卡上使用`make minicom`运行
-
 + 单核运行使用`loadboot`，双核运行使用`loadbootm`
 
 ## More Details
