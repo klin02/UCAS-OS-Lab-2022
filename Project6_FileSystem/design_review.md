@@ -17,7 +17,7 @@ header: Prj6_FileSystem &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&e
 
 ---
 
-![bg 50%](Attachment/prj6.bmp)
+![bg 50%](Attachment/prj6.png)
 
 ---
 <!--_class: lead-->
